@@ -20,6 +20,13 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.util.Text;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.InventoryID;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.Item;
+import net.runelite.client.game.ItemManager;
+import net.runelite.api.Skill;
+import net.runelite.api.events.StatChanged;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -30,21 +37,38 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @PluginDescriptor(
-        name = "Thieving Streaks",
-        description = "Tracks pickpocket streaks per NPC type",
-        tags = {"thieving", "pickpocket", "streak"}
+        name = "Streak Tracker",
+        description = "Tracks streaks for pickpocketing and farming harvests",
+        tags = {"thieving", "farming", "streak"}
 )
 public class ThievingStreakPlugin extends Plugin
 {
+
+    public enum SkillType
+    {
+        THIEVING,
+        FARMING
+    }
+
     private static final Pattern PICKPOCKET_SUCCESS =
             Pattern.compile("You pick the (.+?)'s pocket\\.");
 
     private static final Pattern PICKPOCKET_FAIL =
             Pattern.compile("You fail to pick the (.+?)'s pocket\\.");
 
-    private static final String CONFIG_GROUP = "thievingstreak";
-    private static final String CONFIG_KEY_BEST = "bestStreaks";
+    // TODO check the actual strings for this
+    private static final Pattern FARMING_HARVEST =
+            Pattern.compile("You (?:harvest|pick|carefully pick) (?:some |a )?(.+?)(?:\\.|$)");
 
+    private static final Pattern FARMING_DEPLETED =
+            Pattern.compile("The patch is now empty\\.|You have finished harvesting this patch\\.");
+
+    private static final Pattern HERB_START =
+        Pattern.compile("You begin to harvest the herb patch\\.", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern HERB_EMPTY =
+        Pattern.compile("The herb patch is now empty\\.", Pattern.CASE_INSENSITIVE);
+    
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
 
@@ -72,16 +96,30 @@ public class ThievingStreakPlugin extends Plugin
     @Inject
     private ConfigManager configManager;
 
+    @Inject
+    private ItemManager itemManager;
+
     @Getter
-    private String activeNpc;
+    private SkillType activeSkill;
+
+    @Getter
+    private String activeTarget;
 
     @Getter
     private int currentStreak;
 
     @Getter
-    private Map<String, Integer> bestStreaks = new HashMap<>();
+    private Map<String, Integer> bestThievingStreaks = new HashMap<>();
+
+    @Getter
+    private Map<String, Integer> bestFarmingStreaks = new HashMap<>();
 
     private NavigationButton navButton;
+    private boolean herbHarvestActive = false;
+    private int herbItemId = -1;
+    private int lastFarmingXpTick = -1;
+
+    private final Map<Integer, Integer> lastInventory = new HashMap<>();
 
     @Provides
     ThievingStreakConfig provideConfig(ConfigManager configManager)
@@ -92,6 +130,10 @@ public class ThievingStreakPlugin extends Plugin
     @Override
     protected void startUp()
     {
+        lastInventory.clear();
+        herbHarvestActive = false;
+        herbItemId = -1;
+        lastFarmingXpTick = -1;
         loadBestStreaks();
 
         overlayManager.add(overlay);
@@ -99,7 +141,7 @@ public class ThievingStreakPlugin extends Plugin
         final BufferedImage icon = ImageUtil.loadImageResource(ThievingStreakPlugin.class, "thieving_icon.png"); // optional, or null
 
         navButton = NavigationButton.builder()
-                .tooltip("Thieving streaks")
+                .tooltip("Streak Tracker")
                 .icon(icon)
                 .priority(5)
                 .panel(panel)
@@ -107,8 +149,9 @@ public class ThievingStreakPlugin extends Plugin
 
         clientToolbar.addNavigation(navButton);
 
-        panel.updateCurrent("", 0);
-        panel.updateBestStreaks(bestStreaks);
+        panel.updateCurrent(null, "", 0);
+        panel.updateThievingBest(bestThievingStreaks);
+        panel.updateFarmingBest(bestFarmingStreaks);
     }
 
     @Override
@@ -135,18 +178,51 @@ public class ThievingStreakPlugin extends Plugin
 
         String message = Text.removeTags(event.getMessage());
 
-        Matcher successMatcher = PICKPOCKET_SUCCESS.matcher(message);
-        Matcher failMatcher = PICKPOCKET_FAIL.matcher(message);
+        Matcher m;
 
-        if (successMatcher.matches())
+        // Thieving
+        m = PICKPOCKET_SUCCESS.matcher(message);
+        if (m.matches())
         {
-            String npc = successMatcher.group(1);
-            handleSuccess(npc);
+            String npc = m.group(1);
+            handleThievingSuccess(npc);
+            return;
         }
-        else if (failMatcher.matches())
+
+        m = PICKPOCKET_FAIL.matcher(message);
+        if (m.matches())
         {
-            String npc = failMatcher.group(1);
-            handleFailure(npc);
+            String npc = m.group(1);
+            handleThievingFailure(npc);
+            return;
+        }
+
+        // Farming
+        m = FARMING_HARVEST.matcher(message);
+        if (m.matches())
+        {
+            String crop = m.group(1).trim();
+            handleFarmingHarvest(crop);
+            return;
+        }
+
+        m = FARMING_DEPLETED.matcher(message);
+        if (m.matches())
+        {
+            handleFarmingDepleted();
+        }
+
+        m = HERB_START.matcher(message);
+        if (m.matches())
+        {
+            startHerbHarvest();
+            return;
+        }
+
+        m = HERB_EMPTY.matcher(message);
+        if (m.matches())
+        {
+            endHerbHarvest();
         }
     }
 
@@ -156,115 +232,304 @@ public class ThievingStreakPlugin extends Plugin
         GameState state = event.getGameState();
         if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING || state == GameState.CONNECTION_LOST)
         {
-            // Logging out / hopping ends the streak
             finishCurrentStreak();
+            lastInventory.clear();
+            herbHarvestActive = false;
+            herbItemId = -1;
+            lastFarmingXpTick = -1;
         }
     }
 
-    private void handleSuccess(String npc)
+    // TODO refactor with farming to make something generic
+    private void handleThievingSuccess(String npc)
     {
-        // If you change NPC type, start a new streak for that type
-        if (activeNpc == null || !activeNpc.equals(npc))
+        if (activeSkill != SkillType.THIEVING || activeTarget == null || !activeTarget.equals(npc))
         {
-            finishCurrentStreak(); // commit previous NPC streak before switching
-            activeNpc = npc;
+            finishCurrentStreak();
+            activeSkill = SkillType.THIEVING;
+            activeTarget = npc;
             currentStreak = 0;
         }
 
         currentStreak++;
-
-        panel.updateCurrent(activeNpc, currentStreak);
-        // Overlay reads from getters, so nothing else needed
+        panel.updateCurrent(activeSkill, activeTarget, currentStreak);
     }
 
-    private void handleFailure(String npc)
+    private void handleThievingFailure(String npc)
     {
-        // Treat any failure as end of current streak if it matches the active NPC
-        if (activeNpc != null && activeNpc.equals(npc))
+        if (activeSkill == SkillType.THIEVING && activeTarget != null && activeTarget.equals(npc))
         {
             finishCurrentStreak();
         }
     }
 
-    private void finishCurrentStreak()
+    private void handleFarmingHarvest(String crop)
     {
-        if (activeNpc == null || currentStreak <= 0)
+        if (activeSkill != SkillType.FARMING || activeTarget == null || !activeTarget.equals(crop))
         {
-            activeNpc = null;
+            finishCurrentStreak();
+            activeSkill = SkillType.FARMING;
+            activeTarget = crop;
             currentStreak = 0;
-            panel.updateCurrent("", 0);
+        }
+
+        currentStreak++;
+        panel.updateCurrent(activeSkill, activeTarget, currentStreak);
+    }
+
+    private void handleFarmingDepleted()
+    {
+        if (activeSkill == SkillType.FARMING)
+        {
+            finishCurrentStreak();
+        }
+    }
+
+    private void startHerbHarvest()
+    {
+        // If we’re already harvesting herbs on this patch, do nothing
+        if (herbHarvestActive && activeSkill == SkillType.FARMING)
+        {
+            return;
+        }
+        
+        finishCurrentStreak();
+
+        activeSkill = SkillType.FARMING;
+        activeTarget = null; // unknown until we see which herb appears
+        currentStreak = 0;
+
+        herbHarvestActive = true;
+        herbItemId = -1;
+        lastFarmingXpTick = -1;
+
+        // we’ll detect herb type/name from inventory
+        panel.updateCurrent(activeSkill, "Herb patch", 0);
+    }
+
+    private void endHerbHarvest()
+    {
+        if (!herbHarvestActive)
+        {
             return;
         }
 
-        int best = bestStreaks.getOrDefault(activeNpc, 0);
-        if (currentStreak > best)
+        herbHarvestActive = false;
+        herbItemId = -1;
+        lastFarmingXpTick = -1;
+        finishCurrentStreak();
+    }
+
+
+    private void finishCurrentStreak()
+    {
+        if (activeSkill == null || activeTarget == null || currentStreak <= 0)
         {
-            bestStreaks.put(activeNpc, currentStreak);
-            saveBestStreaks();
+            activeSkill = null;
+            activeTarget = null;
+            currentStreak = 0;
+            panel.updateCurrent(null, "", 0);
+            return;
         }
 
-        activeNpc = null;
-        currentStreak = 0;
+        switch (activeSkill)
+        {
+            case THIEVING:
+            {
+                int best = bestThievingStreaks.getOrDefault(activeTarget, 0);
+                if (currentStreak > best)
+                {
+                    bestThievingStreaks.put(activeTarget, currentStreak);
+                    saveThievingBestStreaks();
+                }
+                panel.updateThievingBest(bestThievingStreaks);
+                break;
+            }
+            case FARMING:
+            {
+                int best = bestFarmingStreaks.getOrDefault(activeTarget, 0);
+                if (currentStreak > best)
+                {
+                    bestFarmingStreaks.put(activeTarget, currentStreak);
+                    saveFarmingBestStreaks();
+                }
+                panel.updateFarmingBest(bestFarmingStreaks);
+                break;
+            }
+        }
 
-        panel.updateCurrent("", 0);
-        panel.updateBestStreaks(bestStreaks);
+        activeSkill = null;
+        activeTarget = null;
+        currentStreak = 0;
+        panel.updateCurrent(null, "", 0);
+    }
+
+    private Map<String, Integer> loadMap(String json)
+    {
+        if (json == null || json.isEmpty())
+        {
+            return new HashMap<>();
+    }
+
+        try
+        {
+            Map<String, Integer> map = GSON.fromJson(json, MAP_TYPE);
+            return map != null ? map : new HashMap<>();
+        }
+        catch (Exception e)
+        {
+            return new HashMap<>();
+        }
     }
 
     private void loadBestStreaks()
     {
-        String json = config.bestStreaks();
-        if (json == null || json.isEmpty())
+        bestThievingStreaks = loadMap(config.bestThievingStreaks());
+        bestFarmingStreaks = loadMap(config.bestFarmingStreaks());
+    }
+
+    private void saveThievingBestStreaks()
+    {
+        String json = GSON.toJson(bestThievingStreaks);
+        configManager.setConfiguration("thievingstreak", "bestStreaks", json);
+    }
+
+    private void saveFarmingBestStreaks()
+    {
+        String json = GSON.toJson(bestFarmingStreaks);
+        configManager.setConfiguration("thievingstreak", "bestFarmingStreaks", json);
+    }
+
+    public void deleteStreak(SkillType skill, String key)
+    {
+        if (skill == null || key == null)
         {
-            bestStreaks = new HashMap<>();
             return;
         }
 
-        try
+        switch (skill)
         {
-            bestStreaks = GSON.fromJson(json, MAP_TYPE);
-            if (bestStreaks == null)
+            case THIEVING:
+                if (bestThievingStreaks.remove(key) != null)
+                {
+                    saveThievingBestStreaks();
+                    panel.updateThievingBest(bestThievingStreaks);
+                }
+                break;
+            case FARMING:
+                if (bestFarmingStreaks.remove(key) != null)
+                {
+                    saveFarmingBestStreaks();
+                    panel.updateFarmingBest(bestFarmingStreaks);
+                }
+                break;
+        }
+    }
+
+    public void resetAllStreaks()
+    {
+        bestThievingStreaks.clear();
+        bestFarmingStreaks.clear();
+        saveThievingBestStreaks();
+        saveFarmingBestStreaks();
+
+        activeSkill = null;
+        activeTarget = null;
+        currentStreak = 0;
+
+        panel.updateCurrent(null, "", 0);
+        panel.updateThievingBest(bestThievingStreaks);
+        panel.updateFarmingBest(bestFarmingStreaks);
+    }
+
+    @Subscribe
+    public void onItemContainerChanged(ItemContainerChanged event)
+    {
+        if (event.getContainerId() != InventoryID.INVENTORY.getId())
+        {
+            return;
+        }
+
+        ItemContainer container = event.getItemContainer();
+        if (container == null)
+        {
+            return;
+        }
+
+        // Build current inventory counts
+        Map<Integer, Integer> current = new HashMap<>();
+        for (Item item : container.getItems())
+        {
+            if (item == null || item.getId() <= 0)
             {
-                bestStreaks = new HashMap<>();
+                continue;
+            }
+            current.merge(item.getId(), item.getQuantity(), Integer::sum);
+        }
+
+        if (herbHarvestActive
+            && activeSkill == SkillType.FARMING
+            && client.getTickCount() == lastFarmingXpTick)
+        {
+            // Detect and count herb gains
+            for (Map.Entry<Integer, Integer> e : current.entrySet())
+            {
+                int id = e.getKey();
+                int newQty = e.getValue();
+                int oldQty = lastInventory.getOrDefault(id, 0);
+                int delta = newQty - oldQty;
+
+                if (delta <= 0)
+                {
+                    continue;
+                }
+
+                // If we don't yet know which herb this patch is, try to identify it
+                if (herbItemId == -1)
+                {
+                    String name = itemManager.getItemComposition(id).getName();
+                    String lower = name.toLowerCase();
+
+                    if (lower.contains("grimy"))
+                    {
+                        herbItemId = id;
+                        activeTarget = name;
+                    }
+                }
+
+                // Count only the chosen herb type
+                if (id == herbItemId && herbItemId != -1)
+                {
+                    currentStreak += delta;
+                    String label = (activeTarget != null && !activeTarget.isEmpty())
+                            ? activeTarget
+                            : "Herb patch";
+
+                    panel.updateCurrent(activeSkill, label, currentStreak);
+                }
             }
         }
-        catch (Exception e)
-        {
-            bestStreaks = new HashMap<>();
-        }
+
+        lastInventory.clear();
+        lastInventory.putAll(current);
     }
 
-    private void saveBestStreaks()
+    @Subscribe
+    public void onStatChanged(StatChanged event)
     {
-        String json = GSON.toJson(bestStreaks);
-        configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_BEST, json);
-    }
-
-    protected void deleteNpcStreak(String npc)
-    {
-        if (npc == null)
+        if (event.getSkill() != Skill.FARMING)
         {
             return;
         }
 
-        if (bestStreaks.remove(npc) != null)
+        if (!herbHarvestActive)
         {
-            saveBestStreaks();
-            panel.updateBestStreaks(bestStreaks);
+            return;
         }
+
+        // Mark this tick as a "Farming XP tick" during an active herb harvest
+        lastFarmingXpTick = client.getTickCount();
     }
 
-    protected void resetAllStreaks()
-    {
-        // Clear best streaks
-        bestStreaks.clear();
-        saveBestStreaks();
 
-        // Also clear current streak for cleanliness
-        activeNpc = null;
-        currentStreak = 0;
-        panel.updateCurrent("", 0);
-
-        // Redraw list
-        panel.updateBestStreaks(bestStreaks);
-    }
 }

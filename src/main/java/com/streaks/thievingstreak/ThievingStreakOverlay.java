@@ -1,6 +1,5 @@
 package com.streaks.thievingstreak;
 
-import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -25,23 +24,27 @@ public class ThievingStreakOverlay extends OverlayPanel
     {
         panelComponent.getChildren().clear();
 
-        String npc = plugin.getActiveNpc();
+        ThievingStreakPlugin.SkillType skill = plugin.getActiveSkill();
+        String target = plugin.getActiveTarget();
         int streak = plugin.getCurrentStreak();
 
-        if (npc == null || streak <= 0)
+        if (skill == null || target == null || streak <= 0)
         {
             return null;
         }
 
+        String title = "Streak";
+        String left = (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving - " : "Farming - ") + target;
+
         panelComponent.getChildren().add(
                 TitleComponent.builder()
-                        .text("Pickpocket streak")
+                        .text(title)
                         .build()
         );
 
         panelComponent.getChildren().add(
                 LineComponent.builder()
-                        .left(npc)
+                        .left(left)
                         .right(Integer.toString(streak))
                         .build()
         );

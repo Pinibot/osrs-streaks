@@ -5,20 +5,18 @@ import net.runelite.client.ui.PluginPanel;
 
 import javax.inject.Inject;
 import javax.swing.*;
-
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.Map;
 
 public class ThievingStreakPanel extends PluginPanel
 {
     private final ThievingStreakPlugin plugin;
 
-    private final JLabel currentNpcValue = new JLabel("---");
+    private final JLabel currentTargetValue = new JLabel("---");
     private final JLabel currentStreakValue = new JLabel("---");
 
-    private final JPanel bestStreaksContainer = new JPanel();
+    private final JPanel thievingContainer = new JPanel();
+    private final JPanel farmingContainer = new JPanel();
 
     @Inject
     public ThievingStreakPanel(ThievingStreakPlugin plugin)
@@ -27,13 +25,11 @@ public class ThievingStreakPanel extends PluginPanel
 
         getScrollPane().setBorder(null);
 
-        JPanel container = getWrappedPanel();
-        container.setLayout(new BorderLayout());
-        container.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        setLayout(new BorderLayout());
         setBackground(ColorScheme.DARK_GRAY_COLOR);
-        container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // === TOP: current session stats ===
+        // TOP: current streak info
         JPanel statsPanel = new JPanel(new GridBagLayout());
         statsPanel.setOpaque(false);
 
@@ -41,59 +37,40 @@ public class ThievingStreakPanel extends PluginPanel
         c.gridx = 0;
         c.gridy = 0;
         c.weightx = 1;
-        c.anchor = GridBagConstraints.NORTHWEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
+        c.anchor = GridBagConstraints.CENTER;
+        c.fill = GridBagConstraints.NONE;
         c.insets = new Insets(0, 0, 4, 0);
 
-        // Title
-        JLabel title = createTitleLabel("Thieving Streaks");
-        GridBagConstraints titleC = new GridBagConstraints();
-        titleC.gridx = 0;
-        titleC.gridy = 0;
-        titleC.weightx = 1.0;
-        titleC.anchor = GridBagConstraints.CENTER; // center horizontally
-        titleC.insets = new Insets(0, 0, 4, 0);
-        titleC.fill = GridBagConstraints.NONE;
+        JLabel title = createTitleLabel("Streak Tracker");
+        statsPanel.add(title, c);
 
-        statsPanel.add(title, titleC);
         c.gridy++;
-
-        // Separator
         c.insets = new Insets(0, 0, 8, 0);
+        c.anchor = GridBagConstraints.NORTHWEST;
+        c.fill = GridBagConstraints.HORIZONTAL;
         statsPanel.add(createSeparator(), c);
-        c.gridy++;
 
-        // Current NPC row
+        c.gridy++;
         c.insets = new Insets(0, 0, 2, 0);
-        statsPanel.add(createStatRow("Current NPC:", currentNpcValue), c);
-        c.gridy++;
+        statsPanel.add(createStatRow("Current:", currentTargetValue), c);
 
-        // Current streak row
+        c.gridy++;
         statsPanel.add(createStatRow("Current streak:", currentStreakValue), c);
-        c.gridy++;
 
-        // Spacing
-        c.weighty = 1;
-        statsPanel.add(Box.createVerticalStrut(8), c);
+        add(statsPanel, BorderLayout.NORTH);
 
-        container.add(statsPanel, BorderLayout.NORTH);
+        // CENTER: collapsible skill sections
+        JPanel sections = new JPanel();
+        sections.setLayout(new BoxLayout(sections, BoxLayout.Y_AXIS));
+        sections.setOpaque(false);
 
-        // === CENTER: best streaks list ===
-        bestStreaksContainer.setLayout(new BoxLayout(bestStreaksContainer, BoxLayout.Y_AXIS));
-        bestStreaksContainer.setOpaque(false);
+        sections.add(createSkillSection("Thieving", ThievingStreakPlugin.SkillType.THIEVING, thievingContainer));
+        sections.add(Box.createVerticalStrut(8));
+        sections.add(createSkillSection("Farming", ThievingStreakPlugin.SkillType.FARMING, farmingContainer));
 
-        JScrollPane scrollPane = new JScrollPane(bestStreaksContainer);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Best streaks"));
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        add(sections, BorderLayout.CENTER);
 
-        scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
-        scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
-
-        scrollPane.setPreferredSize(new Dimension(0, 200));
-
-        container.add(scrollPane, BorderLayout.CENTER);
-
-        // === BOTTOM: centered reset-all button with custom styling ===
+        // BOTTOM: reset-all button
         JButton resetAllButton = createResetAllButton();
 
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -101,7 +78,7 @@ public class ThievingStreakPanel extends PluginPanel
         bottom.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         bottom.add(resetAllButton);
 
-        container.add(bottom, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
     }
 
     private JLabel createTitleLabel(String text)
@@ -136,52 +113,102 @@ public class ThievingStreakPanel extends PluginPanel
         return row;
     }
 
-    private JPanel createBestRow(String npc, int streak)
+    private JPanel createSkillSection(String title,
+                                      ThievingStreakPlugin.SkillType skill,
+                                      JPanel contentPanel)
+    {
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setOpaque(false);
+
+        JButton headerButton = new JButton();
+        headerButton.setFocusable(false);
+        headerButton.setContentAreaFilled(false);
+        headerButton.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+        headerButton.setHorizontalAlignment(SwingConstants.LEFT);
+        headerButton.setForeground(Color.WHITE);
+        headerButton.setFont(headerButton.getFont().deriveFont(Font.BOLD));
+
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scrollPane.setPreferredSize(new Dimension(0, 120));
+
+        setSectionExpanded(headerButton, scrollPane, title, true);
+
+        headerButton.addActionListener(e ->
+        {
+            boolean expanded = !scrollPane.isVisible();
+            setSectionExpanded(headerButton, scrollPane, title, expanded);
+            revalidate();
+        });
+
+        JPanel section = new JPanel(new BorderLayout());
+        section.setOpaque(false);
+        section.add(headerButton, BorderLayout.NORTH);
+        section.add(scrollPane, BorderLayout.CENTER);
+
+        return section;
+    }
+
+    private void setSectionExpanded(JButton headerButton, JScrollPane content, String title, boolean expanded)
+    {
+        content.setVisible(expanded);
+        headerButton.setText((expanded ? "▼ " : "► ") + title);
+    }
+
+    private JPanel createBestRow(ThievingStreakPlugin.SkillType skill, String key, int streak)
     {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
         row.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
 
-        JLabel npcLabel = new JLabel(npc + ":");
-        npcLabel.setForeground(Color.LIGHT_GRAY);
+        JLabel keyLabel = new JLabel(key + ":");
+        keyLabel.setForeground(Color.LIGHT_GRAY);
 
         JLabel streakLabel = new JLabel(Integer.toString(streak));
         streakLabel.setForeground(Color.WHITE);
         streakLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        // Text panel: "npc:      26"
         JPanel textPanel = new JPanel(new BorderLayout());
         textPanel.setOpaque(false);
-        textPanel.add(npcLabel, BorderLayout.WEST);
+        textPanel.add(keyLabel, BorderLayout.WEST);
         textPanel.add(streakLabel, BorderLayout.EAST);
 
-        // Delete button – you can later replace "🗑" with an ImageIcon
         JButton deleteButton = new JButton("🗑");
-        deleteButton.addMouseListener(new MouseAdapter()
-        {
-            @Override
-            public void mouseEntered(MouseEvent e)
-            {
-                deleteButton.setForeground(Color.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e)
-            {
-                deleteButton.setForeground(Color.LIGHT_GRAY);
-            }
-        });
         deleteButton.setMargin(new Insets(0, 4, 0, 4));
         deleteButton.setFocusable(false);
         deleteButton.setBorder(BorderFactory.createEmptyBorder());
         deleteButton.setContentAreaFilled(false);
-        deleteButton.setToolTipText("Delete streak for " + npc);
+        deleteButton.setOpaque(false);
+        deleteButton.setToolTipText("Delete streak for " + key);
+
+        Color normal = Color.LIGHT_GRAY;
+        Color hover = Color.WHITE;
+        deleteButton.setForeground(normal);
+
+        deleteButton.addMouseListener(new java.awt.event.MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e)
+            {
+                deleteButton.setForeground(hover);
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e)
+            {
+                deleteButton.setForeground(normal);
+            }
+        });
 
         deleteButton.addActionListener(e ->
         {
             int res = JOptionPane.showConfirmDialog(
                     this,
-                    "Delete best streak for \"" + npc + "\"?",
+                    "Delete best streak for \"" + key + "\" (" +
+                            (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving" : "Farming") + ")?",
                     "Confirm delete",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE
@@ -189,14 +216,13 @@ public class ThievingStreakPanel extends PluginPanel
 
             if (res == JOptionPane.YES_OPTION)
             {
-                plugin.deleteNpcStreak(npc);
+                plugin.deleteStreak(skill, key);
             }
         });
 
         row.add(textPanel, BorderLayout.CENTER);
         row.add(deleteButton, BorderLayout.EAST);
 
-        // Make the row stretch horizontally in BoxLayout
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 
         return row;
@@ -209,7 +235,6 @@ public class ThievingStreakPanel extends PluginPanel
         resetAllButton.setFocusable(false);
         resetAllButton.setToolTipText("Reset all saved best streaks");
 
-        // Base styling
         resetAllButton.setForeground(Color.WHITE);
         resetAllButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         resetAllButton.setOpaque(true);
@@ -217,17 +242,16 @@ public class ThievingStreakPanel extends PluginPanel
         resetAllButton.setBorder(BorderFactory.createEmptyBorder(4, 16, 4, 16));
         resetAllButton.setFocusPainted(false);
 
-        // Hover effect: slightly lighter grey on hover
-        resetAllButton.addMouseListener(new MouseAdapter()
+        resetAllButton.addMouseListener(new java.awt.event.MouseAdapter()
         {
             @Override
-            public void mouseEntered(MouseEvent e)
+            public void mouseEntered(java.awt.event.MouseEvent e)
             {
                 resetAllButton.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
             }
 
             @Override
-            public void mouseExited(MouseEvent e)
+            public void mouseExited(java.awt.event.MouseEvent e)
             {
                 resetAllButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
             }
@@ -237,7 +261,7 @@ public class ThievingStreakPanel extends PluginPanel
         {
             int res = JOptionPane.showConfirmDialog(
                     this,
-                    "Reset ALL saved best streaks?\nThis cannot be undone.",
+                    "Reset ALL saved best streaks for all skills?\nThis cannot be undone.",
                     "Confirm reset",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE
@@ -252,27 +276,40 @@ public class ThievingStreakPanel extends PluginPanel
         return resetAllButton;
     }
 
-    // === Called by plugin ===
+    // Called by plugin
 
-    public void updateCurrent(String npc, int streak)
+    public void updateCurrent(ThievingStreakPlugin.SkillType skill, String target, int streak)
     {
-        if (npc == null || npc.isEmpty() || streak <= 0)
+        if (skill == null || target == null || target.isEmpty() || streak <= 0)
         {
-            currentNpcValue.setText("---");
+            currentTargetValue.setText("---");
             currentStreakValue.setText("---");
         }
         else
         {
-            currentNpcValue.setText(npc);
+            String skillName = (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving" : "Farming");
+            currentTargetValue.setText(skillName + " - " + target);
             currentStreakValue.setText(String.valueOf(streak));
         }
     }
 
-    public void updateBestStreaks(Map<String, Integer> bestStreaks)
+    public void updateThievingBest(Map<String, Integer> best)
     {
-        bestStreaksContainer.removeAll();
+        updateSkillContainer(ThievingStreakPlugin.SkillType.THIEVING, thievingContainer, best);
+    }
 
-        if (bestStreaks == null || bestStreaks.isEmpty())
+    public void updateFarmingBest(Map<String, Integer> best)
+    {
+        updateSkillContainer(ThievingStreakPlugin.SkillType.FARMING, farmingContainer, best);
+    }
+
+    private void updateSkillContainer(ThievingStreakPlugin.SkillType skill,
+                                      JPanel container,
+                                      Map<String, Integer> best)
+    {
+        container.removeAll();
+
+        if (best == null || best.isEmpty())
         {
             JLabel emptyLabel = new JLabel("No data yet");
             emptyLabel.setForeground(Color.GRAY);
@@ -283,20 +320,20 @@ public class ThievingStreakPanel extends PluginPanel
             wrapper.add(emptyLabel, BorderLayout.CENTER);
 
             wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, wrapper.getPreferredSize().height));
-            bestStreaksContainer.add(wrapper);
+            container.add(wrapper);
         }
         else
         {
-            bestStreaks.entrySet().stream()
+            best.entrySet().stream()
                     .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                     .forEach(e ->
                     {
-                        JPanel row = createBestRow(e.getKey(), e.getValue());
-                        bestStreaksContainer.add(row);
+                        JPanel row = createBestRow(skill, e.getKey(), e.getValue());
+                        container.add(row);
                     });
         }
 
-        bestStreaksContainer.revalidate();
-        bestStreaksContainer.repaint();
+        container.revalidate();
+        container.repaint();
     }
 }

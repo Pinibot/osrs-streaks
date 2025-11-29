@@ -1,0 +1,6 @@
+- sound effects
+    - fanfare on new streak best
+    - counting?
+- popup on streak best
+- bush patches count, but dont end streak when the bush is depleted.
+- 

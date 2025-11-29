@@ -9,11 +9,22 @@ public interface ThievingStreakConfig extends Config
 {
     @ConfigItem(
             keyName = "bestStreaks",
-            name = "Best streaks",
-            description = "Serialized best streaks map",
+            name = "Best Thieving streaks",
+            description = "Serialized best thieving streaks map",
             hidden = true
     )
-    default String bestStreaks()
+    default String bestThievingStreaks()
+    {
+        return "";
+    }
+
+    @ConfigItem(
+            keyName = "bestFarmingStreaks",
+            name = "Best Farming streaks",
+            description = "Serialized best farming streaks map",
+            hidden = true
+    )
+    default String bestFarmingStreaks()
     {
         return "";
     }
