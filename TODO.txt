@@ -2,5 +2,7 @@
     - fanfare on new streak best
     - counting?
 - popup on streak best
-- bush patches count, but dont end streak when the bush is depleted.
-- 
+- Config to hide overlays
+- sorting streaks by name/count
+- last item when the herb patch / allotment depleates isnt counted.
+- end streak after 1 minute of inactivity

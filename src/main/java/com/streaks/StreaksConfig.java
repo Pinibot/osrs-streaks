@@ -1,11 +1,11 @@
-package com.streaks.thievingstreak;
+package com.streaks;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("thievingstreak")
-public interface ThievingStreakConfig extends Config
+@ConfigGroup("streaks")
+public interface StreaksConfig extends Config
 {
     @ConfigItem(
             keyName = "bestStreaks",

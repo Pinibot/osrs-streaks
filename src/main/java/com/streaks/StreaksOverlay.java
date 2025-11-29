@@ -1,4 +1,4 @@
-package com.streaks.thievingstreak;
+package com.streaks;
 
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -8,12 +8,12 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class ThievingStreakOverlay extends OverlayPanel
+public class StreaksOverlay extends OverlayPanel
 {
-    private final ThievingStreakPlugin plugin;
+    private final StreaksPlugin plugin;
 
     @Inject
-    private ThievingStreakOverlay(ThievingStreakPlugin plugin)
+    private StreaksOverlay(StreaksPlugin plugin)
     {
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
@@ -24,7 +24,7 @@ public class ThievingStreakOverlay extends OverlayPanel
     {
         panelComponent.getChildren().clear();
 
-        ThievingStreakPlugin.SkillType skill = plugin.getActiveSkill();
+        StreaksPlugin.SkillType skill = plugin.getActiveSkill();
         String target = plugin.getActiveTarget();
         int streak = plugin.getCurrentStreak();
 
@@ -34,7 +34,7 @@ public class ThievingStreakOverlay extends OverlayPanel
         }
 
         String title = "Streak";
-        String left = (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving - " : "Farming - ") + target;
+        String left = (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving - " : "Farming - ") + target;
 
         panelComponent.getChildren().add(
                 TitleComponent.builder()

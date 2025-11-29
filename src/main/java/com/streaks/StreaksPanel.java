@@ -1,4 +1,4 @@
-package com.streaks.thievingstreak;
+package com.streaks;
 
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -8,9 +8,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Map;
 
-public class ThievingStreakPanel extends PluginPanel
+public class StreaksPanel extends PluginPanel
 {
-    private final ThievingStreakPlugin plugin;
+    private final StreaksPlugin plugin;
 
     private final JLabel currentTargetValue = new JLabel("---");
     private final JLabel currentStreakValue = new JLabel("---");
@@ -19,7 +19,7 @@ public class ThievingStreakPanel extends PluginPanel
     private final JPanel farmingContainer = new JPanel();
 
     @Inject
-    public ThievingStreakPanel(ThievingStreakPlugin plugin)
+    public StreaksPanel(StreaksPlugin plugin)
     {
         this.plugin = plugin;
 
@@ -64,9 +64,9 @@ public class ThievingStreakPanel extends PluginPanel
         sections.setLayout(new BoxLayout(sections, BoxLayout.Y_AXIS));
         sections.setOpaque(false);
 
-        sections.add(createSkillSection("Thieving", ThievingStreakPlugin.SkillType.THIEVING, thievingContainer));
+        sections.add(createSkillSection("Thieving", StreaksPlugin.SkillType.THIEVING, thievingContainer));
         sections.add(Box.createVerticalStrut(8));
-        sections.add(createSkillSection("Farming", ThievingStreakPlugin.SkillType.FARMING, farmingContainer));
+        sections.add(createSkillSection("Farming", StreaksPlugin.SkillType.FARMING, farmingContainer));
 
         add(sections, BorderLayout.CENTER);
 
@@ -114,7 +114,7 @@ public class ThievingStreakPanel extends PluginPanel
     }
 
     private JPanel createSkillSection(String title,
-                                      ThievingStreakPlugin.SkillType skill,
+                                      StreaksPlugin.SkillType skill,
                                       JPanel contentPanel)
     {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
@@ -158,7 +158,7 @@ public class ThievingStreakPanel extends PluginPanel
         headerButton.setText((expanded ? "▼ " : "► ") + title);
     }
 
-    private JPanel createBestRow(ThievingStreakPlugin.SkillType skill, String key, int streak)
+    private JPanel createBestRow(StreaksPlugin.SkillType skill, String key, int streak)
     {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
@@ -208,7 +208,7 @@ public class ThievingStreakPanel extends PluginPanel
             int res = JOptionPane.showConfirmDialog(
                     this,
                     "Delete best streak for \"" + key + "\" (" +
-                            (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving" : "Farming") + ")?",
+                            (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving" : "Farming") + ")?",
                     "Confirm delete",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE
@@ -278,7 +278,7 @@ public class ThievingStreakPanel extends PluginPanel
 
     // Called by plugin
 
-    public void updateCurrent(ThievingStreakPlugin.SkillType skill, String target, int streak)
+    public void updateCurrent(StreaksPlugin.SkillType skill, String target, int streak)
     {
         if (skill == null || target == null || target.isEmpty() || streak <= 0)
         {
@@ -287,7 +287,7 @@ public class ThievingStreakPanel extends PluginPanel
         }
         else
         {
-            String skillName = (skill == ThievingStreakPlugin.SkillType.THIEVING ? "Thieving" : "Farming");
+            String skillName = (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving" : "Farming");
             currentTargetValue.setText(skillName + " - " + target);
             currentStreakValue.setText(String.valueOf(streak));
         }
@@ -295,15 +295,15 @@ public class ThievingStreakPanel extends PluginPanel
 
     public void updateThievingBest(Map<String, Integer> best)
     {
-        updateSkillContainer(ThievingStreakPlugin.SkillType.THIEVING, thievingContainer, best);
+        updateSkillContainer(StreaksPlugin.SkillType.THIEVING, thievingContainer, best);
     }
 
     public void updateFarmingBest(Map<String, Integer> best)
     {
-        updateSkillContainer(ThievingStreakPlugin.SkillType.FARMING, farmingContainer, best);
+        updateSkillContainer(StreaksPlugin.SkillType.FARMING, farmingContainer, best);
     }
 
-    private void updateSkillContainer(ThievingStreakPlugin.SkillType skill,
+    private void updateSkillContainer(StreaksPlugin.SkillType skill,
                                       JPanel container,
                                       Map<String, Integer> best)
     {

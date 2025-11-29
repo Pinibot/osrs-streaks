@@ -1,4 +1,4 @@
-package com.streaks.thievingstreak;
+package com.streaks;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
@@ -35,13 +35,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 @PluginDescriptor(
         name = "Streak Tracker",
         description = "Tracks streaks for pickpocketing and farming harvests",
         tags = {"thieving", "farming", "streak"}
 )
-public class ThievingStreakPlugin extends Plugin
+public class StreaksPlugin extends Plugin
 {
 
     public enum SkillType
@@ -49,6 +52,23 @@ public class ThievingStreakPlugin extends Plugin
         THIEVING,
         FARMING
     }
+
+    public enum PatchType
+    {
+        HERB,
+        ALLOTMENT
+    }
+
+    private static final Set<String> ALLOTMENT_ITEMS = new HashSet<>(Arrays.asList(
+        "potato",
+        "onion",
+        "cabbage",
+        "tomato",
+        "sweetcorn",
+        "strawberry",
+        "watermelon",
+        "snape grass"
+    ));
 
     private static final Pattern PICKPOCKET_SUCCESS =
             Pattern.compile("You pick the (.+?)'s pocket\\.");
@@ -63,11 +83,11 @@ public class ThievingStreakPlugin extends Plugin
     private static final Pattern FARMING_DEPLETED =
             Pattern.compile("The patch is now empty\\.|You have finished harvesting this patch\\.");
 
-    private static final Pattern HERB_START =
-        Pattern.compile("You begin to harvest the herb patch\\.", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PATCH_START =
+        Pattern.compile("You begin to harvest the (herb patch|allotment)\\.", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern HERB_EMPTY =
-        Pattern.compile("The herb patch is now empty\\.", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PATCH_EMPTY =
+        Pattern.compile("The (herb patch|allotment) is now empty\\.", Pattern.CASE_INSENSITIVE);
     
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
@@ -82,16 +102,16 @@ public class ThievingStreakPlugin extends Plugin
     private OverlayManager overlayManager;
 
     @Inject
-    private ThievingStreakOverlay overlay;
+    private StreaksOverlay overlay;
 
     @Inject
-    private ThievingStreakPanel panel;
+    private StreaksPanel panel;
 
     @Inject
     private ClientToolbar clientToolbar;
 
     @Inject
-    private ThievingStreakConfig config;
+    private StreaksConfig config;
 
     @Inject
     private ConfigManager configManager;
@@ -115,30 +135,32 @@ public class ThievingStreakPlugin extends Plugin
     private Map<String, Integer> bestFarmingStreaks = new HashMap<>();
 
     private NavigationButton navButton;
-    private boolean herbHarvestActive = false;
-    private int herbItemId = -1;
+    private boolean patchHarvestActive = false;
+    private PatchType currentPatchType = null;
+    private int patchItemId = -1;
     private int lastFarmingXpTick = -1;
 
     private final Map<Integer, Integer> lastInventory = new HashMap<>();
 
     @Provides
-    ThievingStreakConfig provideConfig(ConfigManager configManager)
+    StreaksConfig provideConfig(ConfigManager configManager)
     {
-        return configManager.getConfig(ThievingStreakConfig.class);
+        return configManager.getConfig(StreaksConfig.class);
     }
 
     @Override
     protected void startUp()
     {
         lastInventory.clear();
-        herbHarvestActive = false;
-        herbItemId = -1;
+        patchHarvestActive = false;
+        patchItemId = -1;
         lastFarmingXpTick = -1;
+        currentPatchType = null;
         loadBestStreaks();
 
         overlayManager.add(overlay);
 
-        final BufferedImage icon = ImageUtil.loadImageResource(ThievingStreakPlugin.class, "thieving_icon.png"); // optional, or null
+        final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "thieving_icon.png"); // optional, or null
 
         navButton = NavigationButton.builder()
                 .tooltip("Streak Tracker")
@@ -212,17 +234,18 @@ public class ThievingStreakPlugin extends Plugin
             handleFarmingDepleted();
         }
 
-        m = HERB_START.matcher(message);
+        m = PATCH_START.matcher(message);
         if (m.matches())
         {
-            startHerbHarvest();
+            String patchToken = m.group(1); // "herb patch" or "allotment"
+            startPatchHarvest(patchToken);
             return;
         }
 
-        m = HERB_EMPTY.matcher(message);
+        m = PATCH_EMPTY.matcher(message);
         if (m.matches())
         {
-            endHerbHarvest();
+            endPatchHarvest();
         }
     }
 
@@ -234,9 +257,10 @@ public class ThievingStreakPlugin extends Plugin
         {
             finishCurrentStreak();
             lastInventory.clear();
-            herbHarvestActive = false;
-            herbItemId = -1;
+            patchHarvestActive = false;
+            patchItemId = -1;
             lastFarmingXpTick = -1;
+            currentPatchType = null;
         }
     }
 
@@ -285,38 +309,48 @@ public class ThievingStreakPlugin extends Plugin
         }
     }
 
-    private void startHerbHarvest()
+    private void startPatchHarvest(String patchToken)
     {
         // If we’re already harvesting herbs on this patch, do nothing
-        if (herbHarvestActive && activeSkill == SkillType.FARMING)
+        if (patchHarvestActive && activeSkill == SkillType.FARMING)
         {
             return;
         }
-        
+
         finishCurrentStreak();
 
         activeSkill = SkillType.FARMING;
-        activeTarget = null; // unknown until we see which herb appears
+        activeTarget = null; // unknown until we see which item
         currentStreak = 0;
 
-        herbHarvestActive = true;
-        herbItemId = -1;
+        patchHarvestActive = true;
+        patchItemId = -1;
         lastFarmingXpTick = -1;
 
-        // we’ll detect herb type/name from inventory
-        panel.updateCurrent(activeSkill, "Herb patch", 0);
+        patchToken = patchToken.toLowerCase();
+        if (patchToken.startsWith("herb"))
+        {
+            currentPatchType = PatchType.HERB;
+            panel.updateCurrent(activeSkill, "Herb patch", 0);
+        }
+        else
+        {
+            currentPatchType = PatchType.ALLOTMENT;
+            panel.updateCurrent(activeSkill, "Allotment", 0);
+        }
     }
 
-    private void endHerbHarvest()
+    private void endPatchHarvest()
     {
-        if (!herbHarvestActive)
+        if (!patchHarvestActive)
         {
             return;
         }
 
-        herbHarvestActive = false;
-        herbItemId = -1;
+        patchHarvestActive = false;
+        patchItemId = -1;
         lastFarmingXpTick = -1;
+        currentPatchType = null;
         finishCurrentStreak();
     }
 
@@ -467,11 +501,11 @@ public class ThievingStreakPlugin extends Plugin
             current.merge(item.getId(), item.getQuantity(), Integer::sum);
         }
 
-        if (herbHarvestActive
+        if (patchHarvestActive
             && activeSkill == SkillType.FARMING
-            && client.getTickCount() == lastFarmingXpTick)
+            && client.getTickCount() == lastFarmingXpTick
+            && currentPatchType != null)
         {
-            // Detect and count herb gains
             for (Map.Entry<Integer, Integer> e : current.entrySet())
             {
                 int id = e.getKey();
@@ -484,26 +518,44 @@ public class ThievingStreakPlugin extends Plugin
                     continue;
                 }
 
-                // If we don't yet know which herb this patch is, try to identify it
-                if (herbItemId == -1)
+                // If we don't yet know which iteme this patch is, try to identify it
+                if (patchItemId == -1)
                 {
                     String name = itemManager.getItemComposition(id).getName();
                     String lower = name.toLowerCase();
 
-                    if (lower.contains("grimy"))
+                    if (currentPatchType == PatchType.HERB)
                     {
-                        herbItemId = id;
-                        activeTarget = name;
+                        if (lower.contains("grimy"))
+                        {
+                            patchItemId = id;
+                            activeTarget = name;
+                        }
+                    }
+                    else if (currentPatchType == PatchType.ALLOTMENT)
+                    {
+                        // exact match against allotment list
+                        if (ALLOTMENT_ITEMS.contains(lower))
+                        {
+                            patchItemId = id;
+                            activeTarget = name;
+                        }
                     }
                 }
 
                 // Count only the chosen herb type
-                if (id == herbItemId && herbItemId != -1)
+                if (id == patchItemId && patchItemId != -1)
                 {
                     currentStreak += delta;
-                    String label = (activeTarget != null && !activeTarget.isEmpty())
-                            ? activeTarget
-                            : "Herb patch";
+                    String label;
+                    if (activeTarget != null && !activeTarget.isEmpty())
+                    {
+                        label = activeTarget;
+                    }
+                    else
+                    {
+                        label = (currentPatchType == PatchType.HERB) ? "Herb patch" : "Allotment";
+                    }
 
                     panel.updateCurrent(activeSkill, label, currentStreak);
                 }
@@ -522,7 +574,7 @@ public class ThievingStreakPlugin extends Plugin
             return;
         }
 
-        if (!herbHarvestActive)
+        if (!patchHarvestActive || activeSkill != SkillType.FARMING)
         {
             return;
         }
