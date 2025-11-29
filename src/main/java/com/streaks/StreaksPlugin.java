@@ -88,7 +88,6 @@ public class StreaksPlugin extends Plugin
     private static final Pattern PATCH_EMPTY =
         Pattern.compile("The (herb patch|allotment) is now empty\\.", Pattern.CASE_INSENSITIVE);
     
-    private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
     private static final int STREAK_TIMEOUT_TICKS = 50; // 30 seconds
 
@@ -98,6 +97,9 @@ public class StreaksPlugin extends Plugin
 
     @Inject
     private ClientThread clientThread;
+
+    @Inject
+    private Gson gson;
 
     @Inject
     private OverlayManager overlayManager;
@@ -441,7 +443,7 @@ public class StreaksPlugin extends Plugin
 
         try
         {
-            Map<String, Integer> map = GSON.fromJson(json, MAP_TYPE);
+            Map<String, Integer> map = gson.fromJson(json, MAP_TYPE);
             return map != null ? map : new HashMap<>();
         }
         catch (Exception e)
@@ -458,13 +460,13 @@ public class StreaksPlugin extends Plugin
 
     private void saveThievingBestStreaks()
     {
-        String json = GSON.toJson(bestThievingStreaks);
+        String json = gson.toJson(bestThievingStreaks);
         configManager.setConfiguration("streaks", "bestThievingStreaks", json);
     }
 
     private void saveFarmingBestStreaks()
     {
-        String json = GSON.toJson(bestFarmingStreaks);
+        String json = gson.toJson(bestFarmingStreaks);
         configManager.setConfiguration("streaks", "bestFarmingStreaks", json);
     }
 
