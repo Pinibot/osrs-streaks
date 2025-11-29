@@ -5,6 +5,9 @@ import net.runelite.client.ui.PluginPanel;
 
 import javax.inject.Inject;
 import javax.swing.*;
+
+import org.apache.commons.lang3.StringUtils;
+
 import java.awt.*;
 import java.util.Map;
 
@@ -208,7 +211,7 @@ public class StreaksPanel extends PluginPanel
             int res = JOptionPane.showConfirmDialog(
                     this,
                     "Delete best streak for \"" + key + "\" (" +
-                            (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving" : "Farming") + ")?",
+                            StringUtils.capitalize(skill.name().toLowerCase()) + ")?",
                     "Confirm delete",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE
@@ -287,7 +290,7 @@ public class StreaksPanel extends PluginPanel
         }
         else
         {
-            String skillName = (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving" : "Farming");
+            String skillName = StringUtils.capitalize(skill.name().toLowerCase());
             currentTargetValue.setText(skillName + " - " + target);
             currentStreakValue.setText(String.valueOf(streak));
         }

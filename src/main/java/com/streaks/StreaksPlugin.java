@@ -90,7 +90,7 @@ public class StreaksPlugin extends Plugin
     
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
-    private static final int STREAK_TIMEOUT_TICKS = 25; // 15 seconds
+    private static final int STREAK_TIMEOUT_TICKS = 50; // 30 seconds
 
     @Inject
     @Getter
@@ -186,7 +186,7 @@ public class StreaksPlugin extends Plugin
         overlayManager.add(overlay);
         overlayManager.add(newBestOverlay);
 
-        final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "thieving_icon.png"); // optional, or null
+        final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "icon.png");
 
         navButton = NavigationButton.builder()
                 .tooltip("Streak Tracker")
