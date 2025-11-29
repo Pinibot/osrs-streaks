@@ -245,7 +245,8 @@ public class StreaksPlugin extends Plugin
         m = PATCH_EMPTY.matcher(message);
         if (m.matches())
         {
-            endPatchHarvest();
+            // Invoke next tick so that we still count the final item obtained
+            clientThread.invokeLater(this::endPatchHarvest);
         }
     }
 
