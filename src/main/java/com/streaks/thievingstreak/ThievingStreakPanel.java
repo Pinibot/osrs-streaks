@@ -5,21 +5,26 @@ import net.runelite.client.ui.PluginPanel;
 
 import javax.inject.Inject;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Map;
 
 public class ThievingStreakPanel extends PluginPanel
 {
+    private final ThievingStreakPlugin plugin;
+
     private final JLabel currentNpcValue = new JLabel("---");
     private final JLabel currentStreakValue = new JLabel("---");
 
     private final JPanel bestStreaksContainer = new JPanel();
 
     @Inject
-    public ThievingStreakPanel()
+    public ThievingStreakPanel(ThievingStreakPlugin plugin)
     {
+        this.plugin = plugin;
+
         getScrollPane().setBorder(null);
 
         JPanel container = getWrappedPanel();
@@ -41,7 +46,16 @@ public class ThievingStreakPanel extends PluginPanel
         c.insets = new Insets(0, 0, 4, 0);
 
         // Title
-        statsPanel.add(createTitleLabel("Thieving Streaks"), c);
+        JLabel title = createTitleLabel("Thieving Streaks");
+        GridBagConstraints titleC = new GridBagConstraints();
+        titleC.gridx = 0;
+        titleC.gridy = 0;
+        titleC.weightx = 1.0;
+        titleC.anchor = GridBagConstraints.CENTER; // center horizontally
+        titleC.insets = new Insets(0, 0, 4, 0);
+        titleC.fill = GridBagConstraints.NONE;
+
+        statsPanel.add(title, titleC);
         c.gridy++;
 
         // Separator
@@ -78,6 +92,16 @@ public class ThievingStreakPanel extends PluginPanel
         scrollPane.setPreferredSize(new Dimension(0, 200));
 
         container.add(scrollPane, BorderLayout.CENTER);
+
+        // === BOTTOM: centered reset-all button with custom styling ===
+        JButton resetAllButton = createResetAllButton();
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        bottom.add(resetAllButton);
+
+        container.add(bottom, BorderLayout.SOUTH);
     }
 
     private JLabel createTitleLabel(String text)
@@ -125,13 +149,107 @@ public class ThievingStreakPanel extends PluginPanel
         streakLabel.setForeground(Color.WHITE);
         streakLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        row.add(npcLabel, BorderLayout.WEST);
-        row.add(streakLabel, BorderLayout.EAST);
+        // Text panel: "npc:      26"
+        JPanel textPanel = new JPanel(new BorderLayout());
+        textPanel.setOpaque(false);
+        textPanel.add(npcLabel, BorderLayout.WEST);
+        textPanel.add(streakLabel, BorderLayout.EAST);
+
+        // Delete button – you can later replace "🗑" with an ImageIcon
+        JButton deleteButton = new JButton("🗑");
+        deleteButton.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                deleteButton.setForeground(Color.WHITE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                deleteButton.setForeground(Color.LIGHT_GRAY);
+            }
+        });
+        deleteButton.setMargin(new Insets(0, 4, 0, 4));
+        deleteButton.setFocusable(false);
+        deleteButton.setBorder(BorderFactory.createEmptyBorder());
+        deleteButton.setContentAreaFilled(false);
+        deleteButton.setToolTipText("Delete streak for " + npc);
+
+        deleteButton.addActionListener(e ->
+        {
+            int res = JOptionPane.showConfirmDialog(
+                    this,
+                    "Delete best streak for \"" + npc + "\"?",
+                    "Confirm delete",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            if (res == JOptionPane.YES_OPTION)
+            {
+                plugin.deleteNpcStreak(npc);
+            }
+        });
+
+        row.add(textPanel, BorderLayout.CENTER);
+        row.add(deleteButton, BorderLayout.EAST);
 
         // Make the row stretch horizontally in BoxLayout
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 
         return row;
+    }
+
+    private JButton createResetAllButton()
+    {
+        JButton resetAllButton = new JButton("Reset all");
+
+        resetAllButton.setFocusable(false);
+        resetAllButton.setToolTipText("Reset all saved best streaks");
+
+        // Base styling
+        resetAllButton.setForeground(Color.WHITE);
+        resetAllButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        resetAllButton.setOpaque(true);
+        resetAllButton.setContentAreaFilled(true);
+        resetAllButton.setBorder(BorderFactory.createEmptyBorder(4, 16, 4, 16));
+        resetAllButton.setFocusPainted(false);
+
+        // Hover effect: slightly lighter grey on hover
+        resetAllButton.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                resetAllButton.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                resetAllButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+            }
+        });
+
+        resetAllButton.addActionListener(e ->
+        {
+            int res = JOptionPane.showConfirmDialog(
+                    this,
+                    "Reset ALL saved best streaks?\nThis cannot be undone.",
+                    "Confirm reset",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            if (res == JOptionPane.YES_OPTION)
+            {
+                plugin.resetAllStreaks();
+            }
+        });
+
+        return resetAllButton;
     }
 
     // === Called by plugin ===

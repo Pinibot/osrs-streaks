@@ -22,7 +22,6 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
-import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -238,5 +237,34 @@ public class ThievingStreakPlugin extends Plugin
     {
         String json = GSON.toJson(bestStreaks);
         configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_BEST, json);
+    }
+
+    protected void deleteNpcStreak(String npc)
+    {
+        if (npc == null)
+        {
+            return;
+        }
+
+        if (bestStreaks.remove(npc) != null)
+        {
+            saveBestStreaks();
+            panel.updateBestStreaks(bestStreaks);
+        }
+    }
+
+    protected void resetAllStreaks()
+    {
+        // Clear best streaks
+        bestStreaks.clear();
+        saveBestStreaks();
+
+        // Also clear current streak for cleanliness
+        activeNpc = null;
+        currentStreak = 0;
+        panel.updateCurrent("", 0);
+
+        // Redraw list
+        panel.updateBestStreaks(bestStreaks);
     }
 }
