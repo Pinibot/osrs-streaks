@@ -4,4 +4,3 @@
 - popup on streak best
 - Config to hide overlays
 - sorting streaks by name/count
-- end streak after 1 minute of inactivity

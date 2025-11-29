@@ -37,7 +37,7 @@ public class StreaksOverlay extends OverlayPanel
         }
 
         String title = "Streak Tracker";
-        String skillName = StringUtils.capitalize(skill.name());
+        String skillName = StringUtils.capitalize(skill.name().toLowerCase());
         String left = skillName + " - " + target;
         double secondsRemaining = plugin.getSecondsRemainingInStreak();
         String secondsText = String.format("%.1fs", secondsRemaining);

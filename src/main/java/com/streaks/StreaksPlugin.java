@@ -96,6 +96,7 @@ public class StreaksPlugin extends Plugin
     private static final int STREAK_TIMEOUT_TICKS = 30 * 50 / 600; 
 
     @Inject
+    @Getter
     private Client client;
 
     @Inject
@@ -122,6 +123,9 @@ public class StreaksPlugin extends Plugin
     @Inject
     private ItemManager itemManager;
 
+    @Inject
+    private NewBestOverlay newBestOverlay;
+
     @Getter
     private SkillType activeSkill;
 
@@ -137,6 +141,21 @@ public class StreaksPlugin extends Plugin
     @Getter
     private Map<String, Integer> bestFarmingStreaks = new HashMap<>();
 
+    @Getter
+    private boolean celebrationActive = false;
+
+    @Getter
+    private long celebrateStartMillis;
+
+    @Getter
+    private SkillType celebrateSkill;
+
+    @Getter
+    private String celebrateTarget;
+
+    @Getter
+    private int celebrateValue;
+
     private NavigationButton navButton;
     private boolean patchHarvestActive = false;
     private PatchType currentPatchType = null;
@@ -145,6 +164,11 @@ public class StreaksPlugin extends Plugin
     private int streakTimeoutTick = -1;
 
     private final Map<Integer, Integer> lastInventory = new HashMap<>();
+
+    public void clearCelebration()
+    {
+        celebrationActive = false;
+    }
 
     @Provides
     StreaksConfig provideConfig(ConfigManager configManager)
@@ -163,6 +187,7 @@ public class StreaksPlugin extends Plugin
         loadBestStreaks();
 
         overlayManager.add(overlay);
+        overlayManager.add(newBestOverlay);
 
         final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "thieving_icon.png"); // optional, or null
 
@@ -185,6 +210,8 @@ public class StreaksPlugin extends Plugin
     {
         finishCurrentStreak(); // commit current streak before shutdown
         overlayManager.remove(overlay);
+        overlayManager.remove(newBestOverlay);
+        clearCelebration();
 
         if (navButton != null)
         {
@@ -381,6 +408,7 @@ public class StreaksPlugin extends Plugin
                 if (currentStreak > best)
                 {
                     bestThievingStreaks.put(activeTarget, currentStreak);
+                    triggerCelebration(SkillType.THIEVING, activeTarget, currentStreak);
                     saveThievingBestStreaks();
                 }
                 panel.updateThievingBest(bestThievingStreaks);
@@ -392,6 +420,7 @@ public class StreaksPlugin extends Plugin
                 if (currentStreak > best)
                 {
                     bestFarmingStreaks.put(activeTarget, currentStreak);
+                    triggerCelebration(SkillType.FARMING, activeTarget, currentStreak);
                     saveFarmingBestStreaks();
                 }
                 panel.updateFarmingBest(bestFarmingStreaks);
@@ -630,6 +659,15 @@ public class StreaksPlugin extends Plugin
         }
 
         return seconds;
+    }
+
+    private void triggerCelebration(SkillType skill, String target, int value)
+    {
+        celebrationActive = true;
+        celebrateStartMillis = System.currentTimeMillis();
+        celebrateSkill = skill;
+        celebrateTarget = target;
+        celebrateValue = value;
     }
 
 
