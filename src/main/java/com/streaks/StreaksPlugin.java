@@ -17,6 +17,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.util.Text;
@@ -27,6 +28,7 @@ import net.runelite.api.Item;
 import net.runelite.client.game.ItemManager;
 import net.runelite.api.Skill;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.GameTick;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -91,6 +93,7 @@ public class StreaksPlugin extends Plugin
     
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
+    private static final int STREAK_TIMEOUT_TICKS = 30 * 50 / 600; 
 
     @Inject
     private Client client;
@@ -139,6 +142,7 @@ public class StreaksPlugin extends Plugin
     private PatchType currentPatchType = null;
     private int patchItemId = -1;
     private int lastFarmingXpTick = -1;
+    private int streakTimeoutTick = -1;
 
     private final Map<Integer, Integer> lastInventory = new HashMap<>();
 
@@ -277,6 +281,7 @@ public class StreaksPlugin extends Plugin
         }
 
         currentStreak++;
+        resetStreakTimer();
         panel.updateCurrent(activeSkill, activeTarget, currentStreak);
     }
 
@@ -299,6 +304,7 @@ public class StreaksPlugin extends Plugin
         }
 
         currentStreak++;
+        resetStreakTimer();
         panel.updateCurrent(activeSkill, activeTarget, currentStreak);
     }
 
@@ -396,6 +402,7 @@ public class StreaksPlugin extends Plugin
         activeSkill = null;
         activeTarget = null;
         currentStreak = 0;
+        streakTimeoutTick = -1;
         panel.updateCurrent(null, "", 0);
     }
 
@@ -548,6 +555,7 @@ public class StreaksPlugin extends Plugin
                 if (id == patchItemId && patchItemId != -1)
                 {
                     currentStreak += delta;
+                    resetStreakTimer();
                     String label;
                     if (activeTarget != null && !activeTarget.isEmpty())
                     {
@@ -582,6 +590,46 @@ public class StreaksPlugin extends Plugin
 
         // Mark this tick as a "Farming XP tick" during an active herb harvest
         lastFarmingXpTick = client.getTickCount();
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        if (activeSkill == null)
+        {
+            return;
+        }
+
+        if (streakTimeoutTick > 0 && client.getTickCount() >= streakTimeoutTick)
+        {
+            // Timer expired → streak ends
+            finishCurrentStreak();
+            streakTimeoutTick = -1;
+        }
+    }
+
+    private void resetStreakTimer()
+    {
+        streakTimeoutTick = client.getTickCount() + 50;
+    }
+
+    protected double getSecondsRemainingInStreak()
+    {
+        int tick = client.getTickCount();
+        int until = streakTimeoutTick;
+        double seconds = 0;
+        if (until > 0)
+        {
+            int remainingTicks = until - tick;
+            if (remainingTicks < 0)
+            {
+                remainingTicks = 0;
+            }
+
+            seconds = remainingTicks * 0.6; // 1 tick = 0.6s
+        }
+
+        return seconds;
     }
 
 

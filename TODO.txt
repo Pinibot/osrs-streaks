@@ -4,5 +4,4 @@
 - popup on streak best
 - Config to hide overlays
 - sorting streaks by name/count
-- last item when the herb patch / allotment depleates isnt counted.
 - end streak after 1 minute of inactivity

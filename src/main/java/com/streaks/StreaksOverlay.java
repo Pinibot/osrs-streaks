@@ -6,6 +6,9 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
+
+import org.apache.commons.lang3.StringUtils;
+
 import java.awt.*;
 
 public class StreaksOverlay extends OverlayPanel
@@ -33,8 +36,11 @@ public class StreaksOverlay extends OverlayPanel
             return null;
         }
 
-        String title = "Streak";
-        String left = (skill == StreaksPlugin.SkillType.THIEVING ? "Thieving - " : "Farming - ") + target;
+        String title = "Streak Tracker";
+        String skillName = StringUtils.capitalize(skill.name());
+        String left = skillName + " - " + target;
+        double secondsRemaining = plugin.getSecondsRemainingInStreak();
+        String secondsText = String.format("%.1fs", secondsRemaining);
 
         panelComponent.getChildren().add(
                 TitleComponent.builder()
@@ -46,6 +52,13 @@ public class StreaksOverlay extends OverlayPanel
                 LineComponent.builder()
                         .left(left)
                         .right(Integer.toString(streak))
+                        .build()
+        );
+
+        panelComponent.getChildren().add(
+                LineComponent.builder()
+                        .left("Time until streak is over:")
+                        .right(secondsText)
                         .build()
         );
 
