@@ -8,7 +8,7 @@ import net.runelite.client.config.ConfigItem;
 public interface StreaksConfig extends Config
 {
     @ConfigItem(
-            keyName = "bestStreaks",
+            keyName = "bestThievingStreaks",
             name = "Best Thieving streaks",
             description = "Serialized best thieving streaks map",
             hidden = true

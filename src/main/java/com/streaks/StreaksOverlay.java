@@ -38,9 +38,12 @@ public class StreaksOverlay extends OverlayPanel
 
         String title = "Streak Tracker";
         String skillName = StringUtils.capitalize(skill.name().toLowerCase());
-        String left = skillName + " - " + target;
+        String mainLeftText = skillName + " - " + target;
+        String mainRightText = Integer.toString(streak);
+
         double secondsRemaining = plugin.getSecondsRemainingInStreak();
-        String secondsText = String.format("%.1fs", secondsRemaining);
+        String timeLeftText = "Time until streak is over: ";
+        String timeRightText = String.format("%.1fs", secondsRemaining);
 
         panelComponent.getChildren().add(
                 TitleComponent.builder()
@@ -50,17 +53,31 @@ public class StreaksOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
                 LineComponent.builder()
-                        .left(left)
-                        .right(Integer.toString(streak))
+                        .left(mainLeftText)
+                        .right(mainRightText)
                         .build()
         );
 
         panelComponent.getChildren().add(
                 LineComponent.builder()
-                        .left("Time until streak is over:")
-                        .right(secondsText)
+                        .left(timeLeftText)
+                        .right(timeRightText)
                         .build()
         );
+
+        // Set dynamic width
+        FontMetrics fm = graphics.getFontMetrics();
+        int maxWidth = 0;
+        maxWidth = Math.max(maxWidth, fm.stringWidth(title));
+        maxWidth = Math.max(maxWidth, fm.stringWidth(mainLeftText + " " + mainRightText));
+        if (!timeRightText.isEmpty())
+        {
+            maxWidth = Math.max(maxWidth, fm.stringWidth(timeLeftText + " " + timeRightText));
+        }
+
+        maxWidth += 20; // padding
+
+        panelComponent.setPreferredSize(new Dimension(maxWidth, 0));
 
         return super.render(graphics);
     }

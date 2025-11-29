@@ -1,6 +1,5 @@
 package com.streaks;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
@@ -17,7 +16,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.util.Text;
@@ -78,7 +76,6 @@ public class StreaksPlugin extends Plugin
     private static final Pattern PICKPOCKET_FAIL =
             Pattern.compile("You fail to pick the (.+?)'s pocket\\.");
 
-    // TODO check the actual strings for this
     private static final Pattern FARMING_HARVEST =
             Pattern.compile("You (?:harvest|pick|carefully pick) (?:some |a )?(.+?)(?:\\.|$)");
 
@@ -93,7 +90,7 @@ public class StreaksPlugin extends Plugin
     
     private static final Gson GSON = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
-    private static final int STREAK_TIMEOUT_TICKS = 30 * 50 / 600; 
+    private static final int STREAK_TIMEOUT_TICKS = 25; // 15 seconds
 
     @Inject
     @Getter
@@ -462,13 +459,13 @@ public class StreaksPlugin extends Plugin
     private void saveThievingBestStreaks()
     {
         String json = GSON.toJson(bestThievingStreaks);
-        configManager.setConfiguration("thievingstreak", "bestStreaks", json);
+        configManager.setConfiguration("streaks", "bestThievingStreaks", json);
     }
 
     private void saveFarmingBestStreaks()
     {
         String json = GSON.toJson(bestFarmingStreaks);
-        configManager.setConfiguration("thievingstreak", "bestFarmingStreaks", json);
+        configManager.setConfiguration("streaks", "bestFarmingStreaks", json);
     }
 
     public void deleteStreak(SkillType skill, String key)
@@ -639,7 +636,7 @@ public class StreaksPlugin extends Plugin
 
     private void resetStreakTimer()
     {
-        streakTimeoutTick = client.getTickCount() + 50;
+        streakTimeoutTick = client.getTickCount() + STREAK_TIMEOUT_TICKS;
     }
 
     protected double getSecondsRemainingInStreak()
