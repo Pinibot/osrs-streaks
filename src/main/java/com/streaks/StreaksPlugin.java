@@ -11,6 +11,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -105,7 +106,7 @@ public class StreaksPlugin extends Plugin
     private OverlayManager overlayManager;
 
     @Inject
-    private StreaksOverlay overlay;
+    private StreaksOverlay streaksOverlay;
 
     @Inject
     private StreaksPanel panel;
@@ -123,7 +124,7 @@ public class StreaksPlugin extends Plugin
     private ItemManager itemManager;
 
     @Inject
-    private NewBestOverlay newBestOverlay;
+    private CelebrationOverlay celebrationOverlay;
 
     @Getter
     private SkillType activeSkill;
@@ -185,8 +186,15 @@ public class StreaksPlugin extends Plugin
         currentPatchType = null;
         loadBestStreaks();
 
-        overlayManager.add(overlay);
-        overlayManager.add(newBestOverlay);
+        if (config.showStreakOverlay())
+        {
+            overlayManager.add(streaksOverlay);
+        }
+
+        if (config.showCelebrationOverlay())
+        {
+            overlayManager.add(celebrationOverlay);
+        }
 
         final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "icon.png");
 
@@ -208,8 +216,8 @@ public class StreaksPlugin extends Plugin
     protected void shutDown()
     {
         finishCurrentStreak(); // commit current streak before shutdown
-        overlayManager.remove(overlay);
-        overlayManager.remove(newBestOverlay);
+        overlayManager.remove(streaksOverlay);
+        overlayManager.remove(celebrationOverlay);
         clearCelebration();
 
         if (navButton != null)
@@ -292,6 +300,40 @@ public class StreaksPlugin extends Plugin
             patchItemId = -1;
             lastFarmingXpTick = -1;
             currentPatchType = null;
+        }
+    }
+
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event)
+    {
+        if (!"streaks".equals(event.getGroup()))
+        {
+            return;
+        }
+
+        switch (event.getKey())
+        {
+            case "showStreakOverlay":
+                if (config.showStreakOverlay())
+                {
+                    overlayManager.add(streaksOverlay);
+                }
+                else
+                {
+                    overlayManager.remove(streaksOverlay);
+                }
+                break;
+
+            case "showCelebrationOverlay":
+                if (config.showCelebrationOverlay())
+                {
+                    overlayManager.add(celebrationOverlay);
+                }
+                else
+                {
+                    overlayManager.remove(celebrationOverlay);
+                }
+                break;
         }
     }
 

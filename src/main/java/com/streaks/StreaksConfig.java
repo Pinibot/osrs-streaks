@@ -28,4 +28,25 @@ public interface StreaksConfig extends Config
     {
         return "";
     }
+
+    
+    @ConfigItem(
+        keyName = "showStreakOverlay",
+        name = "Show current streak overlay",
+        description = "Show the current streak overlay on screen"
+    )
+    default boolean showStreakOverlay()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "showCelebrationOverlay",
+        name = "Show celebration overlay",
+        description = "Show the celebration overlay when you set a new best"
+    )
+    default boolean showCelebrationOverlay()
+    {
+        return true;
+    }
 }

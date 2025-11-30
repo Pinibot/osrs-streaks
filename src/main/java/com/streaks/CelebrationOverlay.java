@@ -12,7 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.awt.*;
 import java.util.Random;
 
-public class NewBestOverlay extends Overlay
+public class CelebrationOverlay extends Overlay
 {
     private static final long DURATION_MS = 5000L;
     private static final int CONFETTI_COUNT = 800;
@@ -21,7 +21,7 @@ public class NewBestOverlay extends Overlay
     private final Client client;
 
     @Inject
-    public NewBestOverlay(StreaksPlugin plugin, Client client)
+    public CelebrationOverlay(StreaksPlugin plugin, Client client)
     {
         this.plugin = plugin;
         this.client = client;
