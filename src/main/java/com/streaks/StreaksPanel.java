@@ -137,6 +137,10 @@ public class StreaksPanel extends PluginPanel
         scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
         scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
         scrollPane.setPreferredSize(new Dimension(0, 120));
+        scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
+        scrollPane.getVerticalScrollBar().setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(4, 0));
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         setSectionExpanded(headerButton, scrollPane, title, true);
 
