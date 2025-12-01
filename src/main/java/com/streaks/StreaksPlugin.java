@@ -554,6 +554,24 @@ public class StreaksPlugin extends Plugin
         panel.updateFarmingBest(bestFarmingStreaks);
     }
 
+    public int getBestStreakFor(SkillType skill, String target)
+    {
+        if (skill == null || target == null)
+        {
+            return 0;
+        }
+
+        switch (skill)
+        {
+            case THIEVING:
+                return bestThievingStreaks.getOrDefault(target, 0);
+            case FARMING:
+                return bestFarmingStreaks.getOrDefault(target, 0);
+            default:
+                return 0;
+        }
+    }
+
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged event)
     {

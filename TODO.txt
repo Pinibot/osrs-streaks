@@ -1,5 +1,4 @@
 - sound effects
     - fanfare on new streak best
     - counting?
-- Config to hide overlays
 - sorting streaks by name/count

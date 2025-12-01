@@ -41,28 +41,39 @@ public class StreaksOverlay extends OverlayPanel
         String mainLeftText = skillName + " - " + target;
         String mainRightText = Integer.toString(streak);
 
+        int best = plugin.getBestStreakFor(skill, target);
+        String bestLeft  = "Best streak:";
+        String bestRight = Integer.toString(best);
+
         double secondsRemaining = plugin.getSecondsRemainingInStreak();
         String timeLeftText = "Time until streak is over: ";
         String timeRightText = String.format("%.1fs", secondsRemaining);
 
         panelComponent.getChildren().add(
-                TitleComponent.builder()
-                        .text(title)
-                        .build()
+            TitleComponent.builder()
+                .text(title)
+                .build()
         );
 
         panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(mainLeftText)
-                        .right(mainRightText)
-                        .build()
+            LineComponent.builder()
+                .left(mainLeftText)
+                .right(mainRightText)
+                .build()
         );
 
         panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(timeLeftText)
-                        .right(timeRightText)
-                        .build()
+            LineComponent.builder()
+                .left(bestLeft)
+                .right(bestRight)
+                .build()
+        );
+
+        panelComponent.getChildren().add(
+            LineComponent.builder()
+                .left(timeLeftText)
+                .right(timeRightText)
+                .build()
         );
 
         // Set dynamic width
