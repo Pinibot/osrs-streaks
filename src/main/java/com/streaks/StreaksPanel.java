@@ -167,11 +167,13 @@ public class StreaksPanel extends PluginPanel
 
     private JPanel createBestRow(StreaksPlugin.SkillType skill, String key, int streak)
     {
+        String prettyKey = StringUtils.capitalize(key);
+
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
         row.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
 
-        JLabel keyLabel = new JLabel(key + ":");
+        JLabel keyLabel = new JLabel(prettyKey + ":");
         keyLabel.setForeground(Color.LIGHT_GRAY);
 
         JLabel streakLabel = new JLabel(Integer.toString(streak));
@@ -189,7 +191,7 @@ public class StreaksPanel extends PluginPanel
         deleteButton.setBorder(BorderFactory.createEmptyBorder());
         deleteButton.setContentAreaFilled(false);
         deleteButton.setOpaque(false);
-        deleteButton.setToolTipText("Delete streak for " + key);
+        deleteButton.setToolTipText("Delete streak for " + prettyKey);
 
         Color normal = Color.LIGHT_GRAY;
         Color hover = Color.WHITE;
@@ -214,7 +216,7 @@ public class StreaksPanel extends PluginPanel
         {
             int res = JOptionPane.showConfirmDialog(
                     this,
-                    "Delete best streak for \"" + key + "\" (" +
+                    "Delete best streak for \"" + prettyKey + "\" (" +
                             StringUtils.capitalize(skill.name().toLowerCase()) + ")?",
                     "Confirm delete",
                     JOptionPane.YES_NO_OPTION,
