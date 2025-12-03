@@ -54,11 +54,18 @@ public class StreaksPlugin extends Plugin
         FARMING
     }
 
-    public enum PatchType
-    {
-        HERB,
-        ALLOTMENT
-    }
+    private static final Set<String> HOPS_ITEMS = new HashSet<>(Arrays.asList(
+        "barley",
+        "hammerstone hops",
+        "asgarnian hops",
+        "jute",
+        "yanillian hops",
+        "flax",
+        "krandorian hops",
+        "wildblood hops",
+        "hemp",
+        "cotton"
+    ));
 
     private static final Set<String> ALLOTMENT_ITEMS = new HashSet<>(Arrays.asList(
         "potato",
@@ -84,10 +91,10 @@ public class StreaksPlugin extends Plugin
             Pattern.compile("The patch is now empty\\.|You have finished harvesting this patch\\.");
 
     private static final Pattern PATCH_START =
-        Pattern.compile("You begin to harvest the (herb patch|allotment)\\.", Pattern.CASE_INSENSITIVE);
+        Pattern.compile("You begin to harvest the ((herb|hops) patch|allotment)\\.", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern PATCH_EMPTY =
-        Pattern.compile("The (herb patch|allotment) is now empty\\.", Pattern.CASE_INSENSITIVE);
+        Pattern.compile("The ((herb|hops) patch|allotment) is now empty\\.", Pattern.CASE_INSENSITIVE);
     
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
     private static final int STREAK_TIMEOUT_TICKS = 50; // 30 seconds
@@ -275,7 +282,7 @@ public class StreaksPlugin extends Plugin
         m = PATCH_START.matcher(message);
         if (m.matches())
         {
-            String patchToken = m.group(1); // "herb patch" or "allotment"
+            String patchToken = m.group(1);
             startPatchHarvest(patchToken);
             return;
         }
@@ -406,12 +413,17 @@ public class StreaksPlugin extends Plugin
         if (patchToken.startsWith("herb"))
         {
             currentPatchType = PatchType.HERB;
-            panel.updateCurrent(activeSkill, "Herb patch", 0);
+            panel.updateCurrent(activeSkill, currentPatchType.label, 0);
+        }
+        else if (patchToken.startsWith("hops"))
+        {
+            currentPatchType = PatchType.HOPS;
+            panel.updateCurrent(activeSkill, currentPatchType.label, 0);
         }
         else
         {
             currentPatchType = PatchType.ALLOTMENT;
-            panel.updateCurrent(activeSkill, "Allotment", 0);
+            panel.updateCurrent(activeSkill, currentPatchType.label, 0);
         }
     }
 
@@ -628,9 +640,16 @@ public class StreaksPlugin extends Plugin
                             activeTarget = name;
                         }
                     }
+                    else if (currentPatchType == PatchType.HOPS)
+                    {
+                        if (HOPS_ITEMS.contains(lower))
+                        {
+                            patchItemId = id;
+                            activeTarget = name;
+                        }
+                    }
                     else if (currentPatchType == PatchType.ALLOTMENT)
                     {
-                        // exact match against allotment list
                         if (ALLOTMENT_ITEMS.contains(lower))
                         {
                             patchItemId = id;
@@ -651,7 +670,7 @@ public class StreaksPlugin extends Plugin
                     }
                     else
                     {
-                        label = (currentPatchType == PatchType.HERB) ? "Herb patch" : "Allotment";
+                        label = currentPatchType.label;
                     }
 
                     panel.updateCurrent(activeSkill, label, currentStreak);

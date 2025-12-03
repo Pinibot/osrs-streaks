@@ -4,7 +4,9 @@ A RuneLite plugin that tracks streak-based activities in Old School RuneScape, i
 
 - **Pickpocketing**
 - **Farming harvest**
-  - Herb patches  
+  - Herb patches
+  - Hops patches
+  - Giant Seaweed
   - Allotments
   - Bushes
   - Cacti
@@ -30,6 +32,8 @@ When a new best streak is achieved, a popup overlay appears at the top of the sc
 ### Farming Streaks
 Supports:
 - **Herb patches**
+- **Hops patches**
+- **Giant Seaweed**
 - **Allotments**
 - **Bushes**
 - **Cacti**

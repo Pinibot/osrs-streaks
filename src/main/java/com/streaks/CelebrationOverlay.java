@@ -26,7 +26,8 @@ public class CelebrationOverlay extends Overlay
         this.plugin = plugin;
         this.client = client;
 
-        setPosition(OverlayPosition.DETACHED);
+        setPosition(OverlayPosition.DYNAMIC);
+        setMovable(true);
         setLayer(OverlayLayer.ALWAYS_ON_TOP);
     }
 
