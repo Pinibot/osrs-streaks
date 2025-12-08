@@ -19,6 +19,9 @@ public class CelebrationOverlay extends Overlay
 
     private final StreaksPlugin plugin;
     private final Client client;
+    
+    @Inject
+    private StreaksConfig config;
 
     @Inject
     public CelebrationOverlay(StreaksPlugin plugin, Client client)
@@ -34,7 +37,7 @@ public class CelebrationOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D g)
     {
-        if (!plugin.isCelebrationActive())
+        if (!plugin.isCelebrationActive() || !config.showCelebrationOverlay())
         {
             return null;
         }

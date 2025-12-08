@@ -192,16 +192,8 @@ public class StreaksPlugin extends Plugin
         lastFarmingXpTick = -1;
         currentPatchType = null;
         loadBestStreaks();
-
-        if (config.showStreakOverlay())
-        {
-            overlayManager.add(streaksOverlay);
-        }
-
-        if (config.showCelebrationOverlay())
-        {
-            overlayManager.add(celebrationOverlay);
-        }
+        overlayManager.add(streaksOverlay);
+        overlayManager.add(celebrationOverlay);
 
         final BufferedImage icon = ImageUtil.loadImageResource(StreaksPlugin.class, "icon.png");
 
@@ -316,31 +308,6 @@ public class StreaksPlugin extends Plugin
         if (!"streaks".equals(event.getGroup()))
         {
             return;
-        }
-
-        switch (event.getKey())
-        {
-            case "showStreakOverlay":
-                if (config.showStreakOverlay())
-                {
-                    overlayManager.add(streaksOverlay);
-                }
-                else
-                {
-                    overlayManager.remove(streaksOverlay);
-                }
-                break;
-
-            case "showCelebrationOverlay":
-                if (config.showCelebrationOverlay())
-                {
-                    overlayManager.add(celebrationOverlay);
-                }
-                else
-                {
-                    overlayManager.remove(celebrationOverlay);
-                }
-                break;
         }
     }
 

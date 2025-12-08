@@ -1,5 +1,6 @@
 package com.streaks;
 
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -16,6 +17,9 @@ public class StreaksOverlay extends OverlayPanel
     private final StreaksPlugin plugin;
 
     @Inject
+    private StreaksConfig config;
+
+    @Inject
     private StreaksOverlay(StreaksPlugin plugin)
     {
         this.plugin = plugin;
@@ -24,7 +28,12 @@ public class StreaksOverlay extends OverlayPanel
 
     @Override
     public Dimension render(Graphics2D graphics)
-    {
+    {   
+        if (!config.showStreakOverlay())
+        {
+            return null;
+        }
+
         panelComponent.getChildren().clear();
 
         StreaksPlugin.SkillType skill = plugin.getActiveSkill();
