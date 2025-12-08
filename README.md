@@ -27,8 +27,6 @@ When a new best streak is achieved, a popup overlay appears at the top of the sc
   - You are inactive for **30 seconds**
 - Saves best streaks per NPC.
 
----
-
 ### Farming Streaks
 Supports:
 - **Herb patches**
@@ -47,6 +45,11 @@ Streak ends when:
 - You are inactive for **30 seconds**
 
 Best streaks are saved per crop type.
+
+### Best Streak Screenshots
+By default, when a new best streak is achieved the plugin will take a screenshot of the game area and save it in the folder .runelite/streaks/
+
+This can be disabled in the configuration if desired.
 
 ---
 
