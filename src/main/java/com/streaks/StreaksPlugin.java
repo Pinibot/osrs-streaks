@@ -8,6 +8,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -15,6 +16,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
@@ -29,9 +31,13 @@ import net.runelite.api.Skill;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.GameTick;
 
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.lang.reflect.Type;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -98,6 +104,8 @@ public class StreaksPlugin extends Plugin
     
     private static final Type MAP_TYPE = new TypeToken<Map<String, Integer>>() {}.getType();
     private static final int STREAK_TIMEOUT_TICKS = 50; // 30 seconds
+    private static final File SCREENSHOT_DIR = new File(RuneLite.RUNELITE_DIR, "streaks");
+    private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
     @Inject
     @Getter
@@ -132,6 +140,9 @@ public class StreaksPlugin extends Plugin
 
     @Inject
     private CelebrationOverlay celebrationOverlay;
+
+    @Inject
+    private DrawManager drawManager;
 
     @Getter
     private SkillType activeSkill;
@@ -428,7 +439,7 @@ public class StreaksPlugin extends Plugin
                 if (currentStreak > best)
                 {
                     bestThievingStreaks.put(activeTarget, currentStreak);
-                    triggerCelebration(SkillType.THIEVING, activeTarget, currentStreak);
+                    handleNewBestStreak(SkillType.THIEVING, activeTarget, currentStreak);
                     saveThievingBestStreaks();
                 }
                 panel.updateThievingBest(bestThievingStreaks);
@@ -440,7 +451,7 @@ public class StreaksPlugin extends Plugin
                 if (currentStreak > best)
                 {
                     bestFarmingStreaks.put(activeTarget, currentStreak);
-                    triggerCelebration(SkillType.FARMING, activeTarget, currentStreak);
+                    handleNewBestStreak(SkillType.FARMING, activeTarget, currentStreak);
                     saveFarmingBestStreaks();
                 }
                 panel.updateFarmingBest(bestFarmingStreaks);
@@ -713,6 +724,59 @@ public class StreaksPlugin extends Plugin
         celebrateSkill = skill;
         celebrateTarget = target;
         celebrateValue = value;
+    }
+
+    private void handleNewBestStreak(SkillType skill, String target, int newBest)
+    {
+        triggerCelebration(skill, target, newBest);
+
+        String skillName = skill == null ? "Unknown" : skill.name();
+        takeNewBestScreenshot(skillName, target, newBest);
+    }
+
+    private void takeNewBestScreenshot(String skillName, String targetName, int streak)
+    {
+        if (!config.takeScreenshotOnNewBest())
+        {
+            return;
+        }
+
+        if (!SCREENSHOT_DIR.exists() && !SCREENSHOT_DIR.mkdirs())
+        {
+            return;
+        }
+
+        final String timestamp  = LocalDateTime.now().format(TIMESTAMP);
+        final String fileName   = String.format(
+            "%s_%s_%d_%s.png",
+            skillName, targetName, streak, timestamp
+        );
+
+        final File outFile = new File(SCREENSHOT_DIR, fileName);
+
+        drawManager.requestNextFrameListener(image ->
+        {
+            try
+            {
+                BufferedImage buffered = (BufferedImage) image;
+                ImageIO.write(buffered, "png", outFile);
+                client.addChatMessage(
+                    ChatMessageType.GAMEMESSAGE,
+                    "",
+                    "Streaks: Screenshot saved to .runelite/streaks/" + outFile.getName(),
+                    null
+                );
+            }
+            catch (Exception e)
+            {
+                client.addChatMessage(
+                    ChatMessageType.GAMEMESSAGE,
+                    "",
+                    "Streaks: Failed to save screenshot",
+                    null
+                );
+            }
+        });
     }
 
 

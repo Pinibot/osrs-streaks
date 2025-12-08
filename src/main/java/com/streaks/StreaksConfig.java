@@ -49,4 +49,14 @@ public interface StreaksConfig extends Config
     {
         return true;
     }
+
+    @ConfigItem(
+        keyName = "takeScreenshotOnNewBest",
+        name = "Take screenshot on new best",
+        description = "If selected, take a new screenshot and save it to .runelite/streaks"
+    )
+    default boolean takeScreenshotOnNewBest()
+    {
+        return true;
+    }
 }
