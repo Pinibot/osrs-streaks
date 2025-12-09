@@ -33,6 +33,9 @@ import net.runelite.api.events.GameTick;
 
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
+
+import org.apache.commons.lang3.StringUtils;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.lang.reflect.Type;
@@ -49,15 +52,16 @@ import java.util.Set;
 @PluginDescriptor(
         name = "Streak Tracker",
         description = "Tracks streaks for pickpocketing and farming harvests",
-        tags = {"thieving", "farming", "streak"}
+        tags = {"thieving", "farming", "hunter", "streak"}
 )
 public class StreaksPlugin extends Plugin
 {
 
     public enum SkillType
     {
-        THIEVING,
-        FARMING
+        FARMING,
+        HUNTER,
+        THIEVING
     }
 
     private static final Set<String> HOPS_ITEMS = new HashSet<>(Arrays.asList(
@@ -154,10 +158,7 @@ public class StreaksPlugin extends Plugin
     private int currentStreak;
 
     @Getter
-    private Map<String, Integer> bestThievingStreaks = new HashMap<>();
-
-    @Getter
-    private Map<String, Integer> bestFarmingStreaks = new HashMap<>();
+    private Map<SkillType, Map<String, Integer>> bestStreaks = new HashMap<>();
 
     @Getter
     private boolean celebrationActive = false;
@@ -218,8 +219,9 @@ public class StreaksPlugin extends Plugin
         clientToolbar.addNavigation(navButton);
 
         panel.updateCurrent(null, "", 0);
-        panel.updateThievingBest(bestThievingStreaks);
-        panel.updateFarmingBest(bestFarmingStreaks);
+        panel.updateBest(SkillType.THIEVING, bestStreaks.get(SkillType.THIEVING));
+        panel.updateBest(SkillType.FARMING, bestStreaks.get(SkillType.FARMING));
+        panel.updateBest(SkillType.HUNTER, bestStreaks.get(SkillType.HUNTER));
     }
 
     @Override
@@ -255,7 +257,7 @@ public class StreaksPlugin extends Plugin
         if (m.matches())
         {
             String npc = m.group(1);
-            handleThievingSuccess(npc);
+            handleSkillSuccess(SkillType.THIEVING, npc);
             return;
         }
 
@@ -263,7 +265,7 @@ public class StreaksPlugin extends Plugin
         if (m.matches())
         {
             String npc = m.group(1);
-            handleThievingFailure(npc);
+            handleSkillFailure(SkillType.THIEVING, npc);
             return;
         }
 
@@ -272,14 +274,14 @@ public class StreaksPlugin extends Plugin
         if (m.matches())
         {
             String crop = m.group(1).trim();
-            handleFarmingHarvest(crop);
+            handleSkillSuccess(SkillType.FARMING, crop);
             return;
         }
 
         m = FARMING_DEPLETED.matcher(message);
         if (m.matches())
         {
-            handleFarmingDepleted();
+            handleSkillFailure(SkillType.FARMING, activeTarget);
         }
 
         m = PATCH_START.matcher(message);
@@ -322,14 +324,13 @@ public class StreaksPlugin extends Plugin
         }
     }
 
-    // TODO refactor with farming to make something generic
-    private void handleThievingSuccess(String npc)
+    private void handleSkillSuccess(SkillType skill, String target)
     {
-        if (activeSkill != SkillType.THIEVING || activeTarget == null || !activeTarget.equals(npc))
+        if (activeSkill != skill || activeTarget == null || !activeTarget.equals(target))
         {
             finishCurrentStreak();
-            activeSkill = SkillType.THIEVING;
-            activeTarget = npc;
+            activeSkill = skill;
+            activeTarget = target;
             currentStreak = 0;
         }
 
@@ -338,32 +339,9 @@ public class StreaksPlugin extends Plugin
         panel.updateCurrent(activeSkill, activeTarget, currentStreak);
     }
 
-    private void handleThievingFailure(String npc)
+    private void handleSkillFailure(SkillType skill, String target)
     {
-        if (activeSkill == SkillType.THIEVING && activeTarget != null && activeTarget.equals(npc))
-        {
-            finishCurrentStreak();
-        }
-    }
-
-    private void handleFarmingHarvest(String crop)
-    {
-        if (activeSkill != SkillType.FARMING || activeTarget == null || !activeTarget.equals(crop))
-        {
-            finishCurrentStreak();
-            activeSkill = SkillType.FARMING;
-            activeTarget = crop;
-            currentStreak = 0;
-        }
-
-        currentStreak++;
-        resetStreakTimer();
-        panel.updateCurrent(activeSkill, activeTarget, currentStreak);
-    }
-
-    private void handleFarmingDepleted()
-    {
-        if (activeSkill == SkillType.FARMING)
+        if (activeSkill == skill && activeTarget != null && activeTarget.equals(target))
         {
             finishCurrentStreak();
         }
@@ -431,32 +409,14 @@ public class StreaksPlugin extends Plugin
             return;
         }
 
-        switch (activeSkill)
+        int best = bestStreaks.get(activeSkill).getOrDefault(activeTarget, 0);
+        if (currentStreak > best)
         {
-            case THIEVING:
-            {
-                int best = bestThievingStreaks.getOrDefault(activeTarget, 0);
-                if (currentStreak > best)
-                {
-                    bestThievingStreaks.put(activeTarget, currentStreak);
-                    handleNewBestStreak(SkillType.THIEVING, activeTarget, currentStreak);
-                    saveThievingBestStreaks();
-                }
-                panel.updateThievingBest(bestThievingStreaks);
-                break;
-            }
-            case FARMING:
-            {
-                int best = bestFarmingStreaks.getOrDefault(activeTarget, 0);
-                if (currentStreak > best)
-                {
-                    bestFarmingStreaks.put(activeTarget, currentStreak);
-                    handleNewBestStreak(SkillType.FARMING, activeTarget, currentStreak);
-                    saveFarmingBestStreaks();
-                }
-                panel.updateFarmingBest(bestFarmingStreaks);
-                break;
-            }
+            Map<String, Integer> bestStreaksForSkill = bestStreaks.get(activeSkill);
+            bestStreaksForSkill.put(activeTarget, currentStreak);
+            handleNewBestStreak(activeSkill, activeTarget, currentStreak);
+            saveBestStreaks(activeSkill);
+            panel.updateBest(activeSkill, bestStreaksForSkill);
         }
 
         activeSkill = null;
@@ -486,20 +446,17 @@ public class StreaksPlugin extends Plugin
 
     private void loadBestStreaks()
     {
-        bestThievingStreaks = loadMap(config.bestThievingStreaks());
-        bestFarmingStreaks = loadMap(config.bestFarmingStreaks());
+        bestStreaks.put(SkillType.THIEVING, loadMap(config.bestThievingStreaks()));
+        bestStreaks.put(SkillType.FARMING, loadMap(config.bestFarmingStreaks()));
+        bestStreaks.put(SkillType.HUNTER, loadMap(config.bestHunterStreaks()));
     }
 
-    private void saveThievingBestStreaks()
+    private void saveBestStreaks(SkillType skill)
     {
-        String json = gson.toJson(bestThievingStreaks);
-        configManager.setConfiguration("streaks", "bestThievingStreaks", json);
-    }
-
-    private void saveFarmingBestStreaks()
-    {
-        String json = gson.toJson(bestFarmingStreaks);
-        configManager.setConfiguration("streaks", "bestFarmingStreaks", json);
+        String json = gson.toJson(bestStreaks.get(skill));
+        String prettySkillName = StringUtils.capitalize(skill.name().toLowerCase());
+        String skillConfigKey = String.format("best%sStreaks", prettySkillName);
+        configManager.setConfiguration("streaks", skillConfigKey, json);
     }
 
     public void deleteStreak(SkillType skill, String key)
@@ -509,39 +466,29 @@ public class StreaksPlugin extends Plugin
             return;
         }
 
-        switch (skill)
+        Map<String, Integer> bestStreakForSkill = bestStreaks.get(skill);
+        if (bestStreakForSkill.remove(key) != null)
         {
-            case THIEVING:
-                if (bestThievingStreaks.remove(key) != null)
-                {
-                    saveThievingBestStreaks();
-                    panel.updateThievingBest(bestThievingStreaks);
-                }
-                break;
-            case FARMING:
-                if (bestFarmingStreaks.remove(key) != null)
-                {
-                    saveFarmingBestStreaks();
-                    panel.updateFarmingBest(bestFarmingStreaks);
-                }
-                break;
+            saveBestStreaks(skill);
+            panel.updateBest(skill, bestStreakForSkill);
         }
     }
 
     public void resetAllStreaks()
     {
-        bestThievingStreaks.clear();
-        bestFarmingStreaks.clear();
-        saveThievingBestStreaks();
-        saveFarmingBestStreaks();
+        bestStreaks.clear();
+        saveBestStreaks(SkillType.THIEVING);
+        saveBestStreaks(SkillType.FARMING);
+        saveBestStreaks(SkillType.HUNTER);
 
         activeSkill = null;
         activeTarget = null;
         currentStreak = 0;
 
         panel.updateCurrent(null, "", 0);
-        panel.updateThievingBest(bestThievingStreaks);
-        panel.updateFarmingBest(bestFarmingStreaks);
+        panel.updateBest(SkillType.THIEVING, bestStreaks.get(SkillType.THIEVING));
+        panel.updateBest(SkillType.FARMING, bestStreaks.get(SkillType.FARMING));
+        panel.updateBest(SkillType.HUNTER, bestStreaks.get(SkillType.HUNTER));
     }
 
     public int getBestStreakFor(SkillType skill, String target)
@@ -551,15 +498,7 @@ public class StreaksPlugin extends Plugin
             return 0;
         }
 
-        switch (skill)
-        {
-            case THIEVING:
-                return bestThievingStreaks.getOrDefault(target, 0);
-            case FARMING:
-                return bestFarmingStreaks.getOrDefault(target, 0);
-            default:
-                return 0;
-        }
+        return bestStreaks.get(skill).getOrDefault(target, 0);
     }
 
     @Subscribe

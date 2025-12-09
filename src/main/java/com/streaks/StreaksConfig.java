@@ -29,6 +29,17 @@ public interface StreaksConfig extends Config
         return "";
     }
 
+    @ConfigItem(
+            keyName = "bestHunterStreaks",
+            name = "Best Hunter streaks",
+            description = "Serialized best hunter streaks map",
+            hidden = true
+    )
+    default String bestHunterStreaks()
+    {
+        return "";
+    }
+
     
     @ConfigItem(
         keyName = "showStreakOverlay",

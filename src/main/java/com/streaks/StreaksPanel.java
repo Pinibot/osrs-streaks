@@ -8,7 +8,10 @@ import javax.swing.*;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.streaks.StreaksPlugin.SkillType;
+
 import java.awt.*;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class StreaksPanel extends PluginPanel
@@ -18,8 +21,7 @@ public class StreaksPanel extends PluginPanel
     private final JLabel currentTargetValue = new JLabel("---");
     private final JLabel currentStreakValue = new JLabel("---");
 
-    private final JPanel thievingContainer = new JPanel();
-    private final JPanel farmingContainer = new JPanel();
+    private Map<SkillType, JPanel> skillContainers = new LinkedHashMap<>();
 
     @Inject
     public StreaksPanel(StreaksPlugin plugin)
@@ -67,9 +69,17 @@ public class StreaksPanel extends PluginPanel
         sections.setLayout(new BoxLayout(sections, BoxLayout.Y_AXIS));
         sections.setOpaque(false);
 
-        sections.add(createSkillSection("Thieving", StreaksPlugin.SkillType.THIEVING, thievingContainer));
-        sections.add(Box.createVerticalStrut(8));
-        sections.add(createSkillSection("Farming", StreaksPlugin.SkillType.FARMING, farmingContainer));
+        skillContainers.put(SkillType.FARMING, new JPanel());
+        skillContainers.put(SkillType.HUNTER, new JPanel());
+        skillContainers.put(SkillType.THIEVING, new JPanel());
+
+        for (Map.Entry<SkillType, JPanel> entry : skillContainers.entrySet()) {
+            SkillType skill = entry.getKey();
+            JPanel skillContainer = entry.getValue();
+            String skillPrettyName = StringUtils.capitalize(skill.name().toLowerCase());
+            sections.add(createSkillSection(skillPrettyName, skill, skillContainer));
+            sections.add(Box.createVerticalStrut(8));
+        }
 
         add(sections, BorderLayout.CENTER);
 
@@ -117,7 +127,7 @@ public class StreaksPanel extends PluginPanel
     }
 
     private JPanel createSkillSection(String title,
-                                      StreaksPlugin.SkillType skill,
+                                      SkillType skill,
                                       JPanel contentPanel)
     {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
@@ -165,7 +175,7 @@ public class StreaksPanel extends PluginPanel
         headerButton.setText((expanded ? "▼ " : "► ") + title);
     }
 
-    private JPanel createBestRow(StreaksPlugin.SkillType skill, String key, int streak)
+    private JPanel createBestRow(SkillType skill, String key, int streak)
     {
         String prettyKey = StringUtils.capitalize(key);
 
@@ -287,7 +297,7 @@ public class StreaksPanel extends PluginPanel
 
     // Called by plugin
 
-    public void updateCurrent(StreaksPlugin.SkillType skill, String target, int streak)
+    public void updateCurrent(SkillType skill, String target, int streak)
     {
         if (skill == null || target == null || target.isEmpty() || streak <= 0)
         {
@@ -302,17 +312,13 @@ public class StreaksPanel extends PluginPanel
         }
     }
 
-    public void updateThievingBest(Map<String, Integer> best)
+    public void updateBest(SkillType skill, Map<String, Integer> best)
     {
-        updateSkillContainer(StreaksPlugin.SkillType.THIEVING, thievingContainer, best);
+        JPanel skillContainer = skillContainers.get(skill);
+        updateSkillContainer(skill, skillContainer, best);
     }
 
-    public void updateFarmingBest(Map<String, Integer> best)
-    {
-        updateSkillContainer(StreaksPlugin.SkillType.FARMING, farmingContainer, best);
-    }
-
-    private void updateSkillContainer(StreaksPlugin.SkillType skill,
+    private void updateSkillContainer(SkillType skill,
                                       JPanel container,
                                       Map<String, Integer> best)
     {
