@@ -8,3 +8,4 @@
         - Streak resets on just "You dismantle the trap."
         - Streak resets on "The box trap that you laid has collapsed."
         - Maybe want to find out how the hunter plugin is handling the coloured wheels, and increase streak on green wheels, stop on red or fallen traps
+        - atm it's treating "Shaking box" as the success target name, and "Box trap" as the failure name

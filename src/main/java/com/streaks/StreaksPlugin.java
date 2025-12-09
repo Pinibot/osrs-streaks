@@ -3,6 +3,8 @@ package com.streaks;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
+import com.streaks.hunter.HunterStreaks;
+
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -11,6 +13,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
@@ -25,6 +28,7 @@ import net.runelite.client.util.Text;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.ObjectComposition;
 import net.runelite.api.Item;
 import net.runelite.client.game.ItemManager;
 import net.runelite.api.Skill;
@@ -45,16 +49,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 @PluginDescriptor(
         name = "Streak Tracker",
         description = "Tracks streaks for pickpocketing and farming harvests",
         tags = {"thieving", "farming", "hunter", "streak"}
 )
-public class StreaksPlugin extends Plugin
+public class StreaksPlugin extends Plugin implements StreakContext
 {
 
     public enum SkillType
@@ -64,41 +65,17 @@ public class StreaksPlugin extends Plugin
         THIEVING
     }
 
-    private static final Set<String> HOPS_ITEMS = new HashSet<>(Arrays.asList(
-        "barley",
-        "hammerstone hops",
-        "asgarnian hops",
-        "jute",
-        "yanillian hops",
-        "flax",
-        "krandorian hops",
-        "wildblood hops",
-        "hemp",
-        "cotton"
-    ));
-
-    private static final Set<String> ALLOTMENT_ITEMS = new HashSet<>(Arrays.asList(
-        "potato",
-        "onion",
-        "cabbage",
-        "tomato",
-        "sweetcorn",
-        "strawberry",
-        "watermelon",
-        "snape grass"
-    ));
-
     private static final Pattern PICKPOCKET_SUCCESS =
-            Pattern.compile("You pick the (.+?)'s pocket\\.");
+        Pattern.compile("You pick the (.+?)'s pocket\\.");
 
     private static final Pattern PICKPOCKET_FAIL =
-            Pattern.compile("You fail to pick the (.+?)'s pocket\\.");
+        Pattern.compile("You fail to pick the (.+?)'s pocket\\.");
 
     private static final Pattern FARMING_HARVEST =
-            Pattern.compile("You (?:harvest|pick|carefully pick) (?:some |a )?(.+?)(?:\\.|$)");
+        Pattern.compile("You (?:harvest|pick|carefully pick) (?:some |a )?(.+?)(?:\\.|$)");
 
     private static final Pattern FARMING_DEPLETED =
-            Pattern.compile("The patch is now empty\\.|You have finished harvesting this patch\\.");
+        Pattern.compile("The patch is now empty\\.|You have finished harvesting this patch\\.");
 
     private static final Pattern PATCH_START =
         Pattern.compile("You begin to harvest the ((herb|hops) patch|allotment)\\.", Pattern.CASE_INSENSITIVE);
@@ -113,7 +90,7 @@ public class StreaksPlugin extends Plugin
 
     @Inject
     @Getter
-    private Client client;
+    protected Client client;
 
     @Inject
     private ClientThread clientThread;
@@ -146,6 +123,9 @@ public class StreaksPlugin extends Plugin
     private CelebrationOverlay celebrationOverlay;
 
     @Inject
+    private EventBus eventBus;
+
+    @Inject
     private DrawManager drawManager;
 
     @Getter
@@ -175,6 +155,7 @@ public class StreaksPlugin extends Plugin
     @Getter
     private int celebrateValue;
 
+    private HunterStreaks hunterStreaks;
     private NavigationButton navButton;
     private boolean patchHarvestActive = false;
     private PatchType currentPatchType = null;
@@ -198,6 +179,8 @@ public class StreaksPlugin extends Plugin
     @Override
     protected void startUp()
     {
+        hunterStreaks = new HunterStreaks(client, this);
+        eventBus.register(hunterStreaks);
         lastInventory.clear();
         patchHarvestActive = false;
         patchItemId = -1;
@@ -227,6 +210,11 @@ public class StreaksPlugin extends Plugin
     @Override
     protected void shutDown()
     {
+        if (hunterStreaks != null)
+        {
+            eventBus.unregister(hunterStreaks);
+            hunterStreaks = null;
+        }
         finishCurrentStreak(); // commit current streak before shutdown
         overlayManager.remove(streaksOverlay);
         overlayManager.remove(celebrationOverlay);
@@ -281,6 +269,7 @@ public class StreaksPlugin extends Plugin
         m = FARMING_DEPLETED.matcher(message);
         if (m.matches())
         {
+            //TODO i think this is unused
             handleSkillFailure(SkillType.FARMING, activeTarget);
         }
 
@@ -324,7 +313,15 @@ public class StreaksPlugin extends Plugin
         }
     }
 
-    private void handleSkillSuccess(SkillType skill, String target)
+    @Override
+    public void handleSkillSuccess(SkillType skill, int targetId) {
+        ObjectComposition objectComposition = client.getObjectDefinition(targetId);
+        String target = objectComposition.getName();
+        handleSkillSuccess(skill, target);
+    }
+
+    @Override
+    public void handleSkillSuccess(SkillType skill, String target)
     {
         if (activeSkill != skill || activeTarget == null || !activeTarget.equals(target))
         {
@@ -339,7 +336,15 @@ public class StreaksPlugin extends Plugin
         panel.updateCurrent(activeSkill, activeTarget, currentStreak);
     }
 
-    private void handleSkillFailure(SkillType skill, String target)
+    @Override
+    public void handleSkillFailure(SkillType skill, int targetId) {
+        ObjectComposition objectComposition = client.getObjectDefinition(targetId);
+        String target = objectComposition.getName();
+        handleSkillFailure(skill, target);
+    }
+
+    @Override
+    public void handleSkillFailure(SkillType skill, String target)
     {
         if (activeSkill == skill && activeTarget != null && activeTarget.equals(target))
         {
@@ -354,6 +359,7 @@ public class StreaksPlugin extends Plugin
         {
             return;
         }
+        patchHarvestActive = true;
 
         finishCurrentStreak();
 
@@ -361,7 +367,6 @@ public class StreaksPlugin extends Plugin
         activeTarget = null; // unknown until we see which item
         currentStreak = 0;
 
-        patchHarvestActive = true;
         patchItemId = -1;
         lastFarmingXpTick = -1;
 
@@ -526,15 +531,16 @@ public class StreaksPlugin extends Plugin
             current.merge(item.getId(), item.getQuantity(), Integer::sum);
         }
 
+        // Handle gathering resources from patches
         if (patchHarvestActive
             && activeSkill == SkillType.FARMING
             && client.getTickCount() == lastFarmingXpTick
             && currentPatchType != null)
         {
-            for (Map.Entry<Integer, Integer> e : current.entrySet())
+            for (Map.Entry<Integer, Integer> entry : current.entrySet())
             {
-                int id = e.getKey();
-                int newQty = e.getValue();
+                int id = entry.getKey();
+                int newQty = entry.getValue();
                 int oldQty = lastInventory.getOrDefault(id, 0);
                 int delta = newQty - oldQty;
 
@@ -543,39 +549,19 @@ public class StreaksPlugin extends Plugin
                     continue;
                 }
 
-                // If we don't yet know which iteme this patch is, try to identify it
+                // If we don't yet know which item this patch is, try to identify it
                 if (patchItemId == -1)
                 {
                     String name = itemManager.getItemComposition(id).getName();
-                    String lower = name.toLowerCase();
 
-                    if (currentPatchType == PatchType.HERB)
+                    if (currentPatchType.possibleItemIds.contains(id))
                     {
-                        if (lower.contains("grimy"))
-                        {
-                            patchItemId = id;
-                            activeTarget = name;
-                        }
-                    }
-                    else if (currentPatchType == PatchType.HOPS)
-                    {
-                        if (HOPS_ITEMS.contains(lower))
-                        {
-                            patchItemId = id;
-                            activeTarget = name;
-                        }
-                    }
-                    else if (currentPatchType == PatchType.ALLOTMENT)
-                    {
-                        if (ALLOTMENT_ITEMS.contains(lower))
-                        {
-                            patchItemId = id;
-                            activeTarget = name;
-                        }
+                        patchItemId = id;
+                        activeTarget = name;
                     }
                 }
 
-                // Count only the chosen herb type
+                // Count only the chosen item type
                 if (id == patchItemId && patchItemId != -1)
                 {
                     currentStreak += delta;

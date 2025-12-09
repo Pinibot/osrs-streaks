@@ -24,31 +24,42 @@
  */
 package com.streaks.hunter;
 
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
-import javax.inject.Inject;
+import com.streaks.StreakContext;
+import com.streaks.StreaksPlugin.SkillType;
 
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.Player;
+import net.runelite.api.Tile;
 import net.runelite.api.coords.Angle;
 import net.runelite.api.coords.Direction;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.eventbus.Subscribe;
 
 public class HunterStreaks {
-    
-	@Inject
-	private Client client;
 
     @Getter
 	private final Map<WorldPoint, HunterTrap> traps = new HashMap<>();
 
+	private final StreakContext streakContext;
+	private final Client client;
+
     private WorldPoint lastTickLocalPlayerLocation;
+
+	public HunterStreaks(Client client, StreakContext streakContext) {
+		this.client = client;
+		this.streakContext = streakContext;
+	}
 
     @Subscribe
 	public void onGameObjectSpawned(GameObjectSpawned event)
@@ -147,6 +158,7 @@ public class HunterStreaks {
 				{
 					myTrap.setState(HunterTrap.State.FULL);
 					myTrap.resetTimer();
+					streakContext.handleSkillSuccess(SkillType.HUNTER, gameObject.getId());
 				}
 
 				break;
@@ -164,6 +176,7 @@ public class HunterStreaks {
 				{
 					myTrap.setState(HunterTrap.State.EMPTY);
 					myTrap.resetTimer();
+					streakContext.handleSkillFailure(SkillType.HUNTER, gameObject.getId());
 				}
 
 				break;
@@ -243,5 +256,79 @@ public class HunterStreaks {
 				}
 				break;
 		}
+	}
+
+	/**
+	 * Iterates over all the traps that were placed by the local player and
+	 * checks if the trap is still there. If the trap is gone, it removes
+	 * the trap from the local players trap collection.
+	 */
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		// Check if all traps are still there, and remove the ones that are not.
+		Iterator<Map.Entry<WorldPoint, HunterTrap>> it = traps.entrySet().iterator();
+		Tile[][][] tiles = client.getScene().getTiles();
+
+		Instant expire = Instant.now().minus(HunterTrap.TRAP_TIME.multipliedBy(2));
+
+		while (it.hasNext())
+		{
+			Map.Entry<WorldPoint, HunterTrap> entry = it.next();
+			HunterTrap trap = entry.getValue();
+			WorldPoint world = entry.getKey();
+			LocalPoint local = LocalPoint.fromWorld(client, world);
+
+			// Not within the client's viewport
+			if (local == null)
+			{
+				// Cull very old traps
+				if (trap.getPlacedOn().isBefore(expire))
+				{
+					it.remove();
+					continue;
+				}
+				continue;
+			}
+
+			Tile tile = tiles[world.getPlane()][local.getSceneX()][local.getSceneY()];
+			GameObject[] objects = tile.getGameObjects();
+
+			boolean containsBoulder = false;
+			boolean containsAnything = false;
+			boolean containsYoungTree = false;
+			for (GameObject object : objects)
+			{
+				if (object != null)
+				{
+					containsAnything = true;
+					if (object.getId() == ObjectID.HUNTING_DEADFALL_BOULDER || object.getId() == ObjectID.HUNTING_MONKEYTRAP_UNSET)
+					{
+						containsBoulder = true;
+						break;
+					}
+
+					// Check for young trees (used while catching salamanders) in the tile.
+					// Otherwise, hunter timers will never disappear after a trap is dismantled
+					if (object.getId() == ObjectID.HUNTING_SAPLING_UP_ORANGE || object.getId() == ObjectID.HUNTING_SAPLING_UP_RED ||
+						object.getId() == ObjectID.HUNTING_SAPLING_UP_BLACK || object.getId() == ObjectID.HUNTING_SAPLING_UP_SWAMP ||
+						object.getId() == ObjectID.HUNTING_SAPLING_UP_MOUNTAIN || object.getId() == ObjectID.HUNTING_SAPLING_SETTING_MOUNTAIN)
+					{
+						containsYoungTree = true;
+					}
+				}
+			}
+
+			if (!containsAnything || containsYoungTree)
+			{
+				it.remove();
+			}
+			else if (containsBoulder) // For traps like deadfalls. This is different because when the trap is gone, there is still a GameObject (boulder)
+			{
+				it.remove();
+			}
+		}
+
+		lastTickLocalPlayerLocation = client.getLocalPlayer().getWorldLocation();
 	}
 }
