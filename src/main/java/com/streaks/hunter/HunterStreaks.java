@@ -48,6 +48,35 @@ import net.runelite.client.eventbus.Subscribe;
 
 public class HunterStreaks {
 
+	private static final Map<Integer, String> TRAP_CREATURE_NAME_MAP = new HashMap<>();
+
+	static
+	{
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_BOXTRAP_FULL_CHINCHOMPA, "Grey chinchompa");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_BOXTRAP_FULL_CHINCHOMPA_BIG, "Red chinchompa");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_BOXTRAP_FULL_CHINCHOMPA_BLACK, "Black chinchompa");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_BOXTRAP_FULL_FERRET, "Ferret");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_BOXTRAP_FULL_JERBOA, "Embertailed jerboa");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_SAPLING_FULL_GREEN, "Swamp lizard");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_SAPLING_FULL_RED, "Red salamander");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_SAPLING_FULL_ORANGE, "Orange salamander");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_SAPLING_FULL_BLACK, "Black salamander");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_SAPLING_FULL_MOUNTAIN, "Tecu salamander");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_OJIBWAY_TRAP_FULL_JUNGLE, "Crimson swift");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_OJIBWAY_TRAP_FULL_POLAR, "Cerulean twitch");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_OJIBWAY_TRAP_FULL_DESERT, "Golden warbler");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_OJIBWAY_TRAP_FULL_WOODLAND, "Copper longtail");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_OJIBWAY_TRAP_FULL_COLOURED, "Tropical wagtail");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_IMPTRAP_FULL, "Imp");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_DEADFALL_FULL_SPIKE, "Prickly kebbit");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_DEADFALL_FULL_SABRE, "Sabre-tooth kebbit");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_DEADFALL_FULL_BARBED, "Barb-tailed kebbit");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_DEADFALL_FULL_CLAW, "Wild kebbit");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_DEADFALL_FULL_FENNEC, "Pyre fox");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_MONKEYTRAP_FULL_0, "Maniacal monkey");
+		TRAP_CREATURE_NAME_MAP.put(ObjectID.HUNTING_MONKEYTRAP_FULL_1, "Maniacal monkey");
+	}
+
     @Getter
 	private final Map<WorldPoint, HunterTrap> traps = new HashMap<>();
 
@@ -158,7 +187,11 @@ public class HunterStreaks {
 				{
 					myTrap.setState(HunterTrap.State.FULL);
 					myTrap.resetTimer();
-					streakContext.handleSkillSuccess(SkillType.HUNTER, gameObject.getId());
+					String creatureName = TRAP_CREATURE_NAME_MAP.getOrDefault(gameObject.getId(), null);
+					if (creatureName != null)
+					{
+						streakContext.handleSkillSuccess(SkillType.HUNTER, creatureName);
+					}
 				}
 
 				break;
@@ -171,89 +204,18 @@ public class HunterStreaks {
 			case ObjectID.HUNTING_BOXTRAP_FAILED: //Empty box trap
 			case ObjectID.HUNTING_OJIBWAY_TRAP_BROKEN: //Empty box trap
 			case ObjectID.HUNTING_DEADFALL_BOULDER: //Empty deadfall trap
+			case ObjectID.HUNTING_SAPLING_FAILED_SWAMP: //Empty net trap
+			case ObjectID.HUNTING_SAPLING_FAILED_RED: //Empty net trap
+			case ObjectID.HUNTING_SAPLING_FAILED_ORANGE: //Empty net trap
+			case ObjectID.HUNTING_SAPLING_FAILED_BLACK: //Empty net trap
 			case ObjectID.HUNTING_SAPLING_FAILED_MOUNTAIN: //Empty net trap
 				if (myTrap != null)
 				{
 					myTrap.setState(HunterTrap.State.EMPTY);
 					myTrap.resetTimer();
-					streakContext.handleSkillFailure(SkillType.HUNTER, gameObject.getId());
+					streakContext.handleSkillFailure(SkillType.HUNTER);
 				}
 
-				break;
-			/*
-			 * ------------------------------------------------------------------------------
-			 * Transitions
-			 * ------------------------------------------------------------------------------
-			 */
-			// Imp entering box
-			case ObjectID.HUNTING_IMPTRAP_TRAPPING:
-
-			// Black chin shaking box
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BLACK_N:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BLACK_E:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BLACK_S:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BLACK_W:
-
-			// Red chin shaking box
-			case ObjectID.HUNTING_BOXTRAP_FAILING:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BIG_N:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BIG_E:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BIG_S:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_BIG_W:
-
-			// Grey chin shaking box
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_N:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_E:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_CHINCHOMPA_S:
-
-			// Ferret shaking box
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_FERRET_N:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_FERRET_S:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_FERRET_W:
-
-			// Embertailed Jerboa box
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_JERBOA_N:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_JERBOA_E:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_JERBOA_S:
-			case ObjectID.HUNTING_BOXTRAP_TRAPPING_JERBOA_W:
-
-			// Bird traps
-			case ObjectID.HUNTING_OJIBWAY_TRAP_FAILING:
-			case ObjectID.HUNTING_OJIBWAY_TRAP_TRAPPING_COLOURED:
-			case ObjectID.HUNTING_OJIBWAY_TRAP_TRAPPING_JUNGLE:
-			case ObjectID.HUNTING_OJIBWAY_TRAP_TRAPPING_POLAR:
-			case ObjectID.HUNTING_OJIBWAY_TRAP_TRAPPING_DESERT:
-			case ObjectID.HUNTING_OJIBWAY_TRAP_TRAPPING_WOODLAND:
-
-			// Deadfall trap
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_SPIKE:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_SABRE:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_SABRE_M:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_BARBED:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_BARBED_M:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_CLAW:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_FENNEC:
-			case ObjectID.HUNTING_DEADFALL_TRAPPING_FENNEC_M:
-
-			// Net trap
-			case ObjectID.HUNTING_SAPLING_CATCHING_GREEN:
-			case ObjectID.HUNTING_SAPLING_FAILING_SWAMP:
-			case ObjectID.HUNTING_SAPLING_CATCHING_ORANGE:
-			case ObjectID.HUNTING_SAPLING_FAILING_ORANGE:
-			case ObjectID.HUNTING_SAPLING_CATCHING_RED:
-			case ObjectID.HUNTING_SAPLING_FAILING_RED:
-			case ObjectID.HUNTING_SAPLING_CATCHING_BLACK:
-			case ObjectID.HUNTING_SAPLING_FAILING_BLACK:
-			case ObjectID.HUNTING_SAPLING_CATCHING_MOUNTAIN:
-			case ObjectID.HUNTING_SAPLING_FAILING_MOUNTAIN:
-
-			// Maniacal monkey boulder trap
-			case ObjectID.HUNTING_MONKEYTRAP_TRAPPING_0:
-			case ObjectID.HUNTING_MONKEYTRAP_TRAPPING_1:
-				if (myTrap != null)
-				{
-					myTrap.setState(HunterTrap.State.TRANSITION);
-				}
 				break;
 		}
 	}

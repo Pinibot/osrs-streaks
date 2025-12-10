@@ -28,7 +28,6 @@ import net.runelite.client.util.Text;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
-import net.runelite.api.ObjectComposition;
 import net.runelite.api.Item;
 import net.runelite.client.game.ItemManager;
 import net.runelite.api.Skill;
@@ -314,13 +313,6 @@ public class StreaksPlugin extends Plugin implements StreakContext
     }
 
     @Override
-    public void handleSkillSuccess(SkillType skill, int targetId) {
-        ObjectComposition objectComposition = client.getObjectDefinition(targetId);
-        String target = objectComposition.getName();
-        handleSkillSuccess(skill, target);
-    }
-
-    @Override
     public void handleSkillSuccess(SkillType skill, String target)
     {
         if (activeSkill != skill || activeTarget == null || !activeTarget.equals(target))
@@ -337,10 +329,9 @@ public class StreaksPlugin extends Plugin implements StreakContext
     }
 
     @Override
-    public void handleSkillFailure(SkillType skill, int targetId) {
-        ObjectComposition objectComposition = client.getObjectDefinition(targetId);
-        String target = objectComposition.getName();
-        handleSkillFailure(skill, target);
+    public void handleSkillFailure(SkillType skill)
+    {
+        handleSkillFailure(skill, activeTarget);
     }
 
     @Override

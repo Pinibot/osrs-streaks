@@ -10,6 +10,13 @@ A RuneLite plugin that tracks streak-based activities in Old School RuneScape, i
   - Allotments
   - Bushes
   - Cacti
+- **Hunting**
+  - Chinchompas (plus other box trap creatures)
+  - Salamanders
+  - Maniacial monkies
+  - Imps
+  - Kebbits (plus other deadfall creatures)
+  - Birds
 
 The plugin records how many successful actions you perform in a row, and saves the best streaks for each target.
 
@@ -46,6 +53,22 @@ Streak ends when:
 
 Best streaks are saved per crop type.
 
+### Hunter Streaks
+Supports:
+- Chinchompas (plus other box trap creatures)
+- Salamanders
+- Maniacial monkies
+- Imps
+- Kebbits (plus other deadfall creatures)
+- Birds
+
+Streak increases when the creature is caught by the trap, not when the trap is collected.
+
+Streak ends when:
+- The trap fails
+- You log out or hop  
+- You are inactive for **30 seconds**
+
 ### Best Streak Screenshots
 By default, when a new best streak is achieved the plugin will take a screenshot of the game area and save it in the folder .runelite/streaks/
 
@@ -62,6 +85,8 @@ If no action occurs for 30 seconds, the streak ends automatically.
 ### Overlays
 
 #### **Streak Tracker Overlay**
+<img width="195" height="71" alt="521955072-00b18bcf-95d8-4986-8530-b66ffac38f3a" src="https://github.com/user-attachments/assets/77305061-36f6-4068-a875-01df9652e4da" />
+
 Shows:
 - Skill + target name  
 - Current streak  
@@ -70,6 +95,8 @@ Shows:
 The width adjusts dynamically to avoid text wrapping.
 
 #### **Celebration Overlay**
+<img width="1087" height="584" alt="520521042-c44abb23-292b-41d0-baf3-440b3b9c4b7a" src="https://github.com/user-attachments/assets/e12684ad-5820-45ae-8afb-f4d7434da61d" />
+
 When a new personal best is achieved:
 - A “NEW BEST!” popup appears
 - A radial burst of confetti animates behind it
@@ -78,6 +105,7 @@ When a new personal best is achieved:
 ---
 
 ### Side Panel
+<img width="243" height="408" alt="521953767-d12295f6-dbd4-41c0-9017-3fd8117395df" src="https://github.com/user-attachments/assets/3de82ef6-50b3-4f7c-b680-d83c00d2aaf6" />
 
 The plugin panel includes:
 - Current activity + streak
@@ -94,8 +122,9 @@ Panels update and resize dynamically.
 
 All streak data is saved using RuneLite’s config system:
 
-- `thievingBest` – best streaks per NPC  
-- `farmingBest` – best streaks per crop  
+- `bestTheivingStreaks` – best streaks per NPC  
+- `bestFarmingStreaks` – best streaks per crop
+- `bestHunterStreaks` - best streaks per creature
 
 The data persists across client restarts.
 
